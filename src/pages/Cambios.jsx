@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { C, F, shadow, fmt } from '../theme';
 import { apiFetch } from '../api';
 
+const POR_PAGINA = 25;
+
 const ESTADOS = [
   { value: 'pendiente', label: 'Pendientes' },
   { value: 'aprobado',  label: 'Aprobados'  },
@@ -73,17 +75,22 @@ export default function Cambios() {
   const [estado, setEstado]             = useState('pendiente');
   const [loading, setLoading]           = useState(false);
   const [resultPublicar, setResultPublicar] = useState(null);
+  const [pagina, setPagina]             = useState(1);
 
   useEffect(() => {
     apiFetch(`/cambios?estado=${estado}`)
       .then(r => r.json())
-      .then(data => { setCambios(Array.isArray(data) ? data : []); setSeleccion({}); setResultPublicar(null); })
+      .then(data => { setCambios(Array.isArray(data) ? data : []); setSeleccion({}); setResultPublicar(null); setPagina(1); })
       .catch(() => {});
   }, [estado]);
 
   function toggleAll(checked) {
-    if (checked) setSeleccion(Object.fromEntries(cambios.map(c => [c.id, true])));
-    else setSeleccion({});
+    if (checked) setSeleccion(s => ({ ...s, ...Object.fromEntries(cambiosPag.map(c => [c.id, true])) }));
+    else setSeleccion(s => {
+      const next = { ...s };
+      cambiosPag.forEach(c => { delete next[c.id]; });
+      return next;
+    });
   }
 
   function toggleOne(id) {
@@ -98,7 +105,12 @@ export default function Cambios() {
       method: 'POST',
       body: JSON.stringify({ ids, preciosVenta: preciosEdit }),
     });
-    setCambios(c => c.filter(x => !ids.includes(x.id)));
+    setCambios(c => {
+      const nuevos = c.filter(x => !ids.includes(x.id));
+      const totalPags = Math.ceil(nuevos.length / POR_PAGINA) || 1;
+      setPagina(p => Math.min(p, totalPags));
+      return nuevos;
+    });
     setSeleccion({});
     setLoading(false);
   }
@@ -132,7 +144,12 @@ export default function Cambios() {
     }
   }
 
-  const selIds = Object.keys(seleccion).filter(id => seleccion[id]);
+  const selIds       = Object.keys(seleccion).filter(id => seleccion[id]);
+  const totalPaginas = Math.ceil(cambios.length / POR_PAGINA) || 1;
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const inicio       = (paginaActual - 1) * POR_PAGINA;
+  const cambiosPag   = cambios.slice(inicio, inicio + POR_PAGINA);
+
   const variacion = c => c.costoAnterior
     ? ((c.costoNuevo - c.costoAnterior) / c.costoAnterior * 100).toFixed(1)
     : null;
@@ -147,6 +164,9 @@ export default function Cambios() {
           <p style={{ margin: '5px 0 0', fontSize: 13, color: C.textSec }}>
             {cambios.length} registros · estado:{' '}
             <strong style={{ color: C.text }}>{ESTADOS.find(e => e.value === estado)?.label}</strong>
+            {totalPaginas > 1 && (
+              <> · página <strong style={{ color: C.text }}>{paginaActual}</strong> de {totalPaginas}</>
+            )}
           </p>
         </div>
 
@@ -229,14 +249,14 @@ export default function Cambios() {
             </tr>
           </thead>
           <tbody>
-            {cambios.length === 0 && (
+            {cambiosPag.length === 0 && (
               <tr>
                 <td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: C.textMuted, padding: 40 }}>
                   No hay registros en este estado.
                 </td>
               </tr>
             )}
-            {cambios.map(c => {
+            {cambiosPag.map(c => {
               const pct  = variacion(c);
               const sube = pct > 0;
               const sel  = !!seleccion[c.id];
@@ -301,6 +321,68 @@ export default function Cambios() {
           </tbody>
         </table>
       </div>
+
+      {totalPaginas > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 16 }}>
+          <button
+            onClick={() => setPagina(1)}
+            disabled={paginaActual === 1}
+            style={{ ...outlineBtn, padding: '6px 10px', opacity: paginaActual === 1 ? 0.4 : 1, cursor: paginaActual === 1 ? 'default' : 'pointer' }}
+          >
+            «
+          </button>
+          <button
+            onClick={() => setPagina(p => Math.max(1, p - 1))}
+            disabled={paginaActual === 1}
+            style={{ ...outlineBtn, padding: '6px 12px', opacity: paginaActual === 1 ? 0.4 : 1, cursor: paginaActual === 1 ? 'default' : 'pointer' }}
+          >
+            ‹
+          </button>
+
+          {Array.from({ length: totalPaginas }, (_, i) => i + 1)
+            .filter(n => n === 1 || n === totalPaginas || Math.abs(n - paginaActual) <= 2)
+            .reduce((acc, n, i, arr) => {
+              if (i > 0 && n - arr[i - 1] > 1) acc.push('…');
+              acc.push(n);
+              return acc;
+            }, [])
+            .map((n, i) =>
+              n === '…' ? (
+                <span key={`ellipsis-${i}`} style={{ padding: '0 4px', color: C.textMuted, fontSize: 13 }}>…</span>
+              ) : (
+                <button
+                  key={n}
+                  onClick={() => setPagina(n)}
+                  style={{
+                    ...outlineBtn,
+                    padding: '6px 11px',
+                    fontWeight: n === paginaActual ? 700 : 500,
+                    background: n === paginaActual ? C.accent : C.surface,
+                    color: n === paginaActual ? '#fff' : C.text,
+                    border: n === paginaActual ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+                  }}
+                >
+                  {n}
+                </button>
+              )
+            )}
+
+          <button
+            onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+            disabled={paginaActual === totalPaginas}
+            style={{ ...outlineBtn, padding: '6px 12px', opacity: paginaActual === totalPaginas ? 0.4 : 1, cursor: paginaActual === totalPaginas ? 'default' : 'pointer' }}
+          >
+            ›
+          </button>
+          <button
+            onClick={() => setPagina(totalPaginas)}
+            disabled={paginaActual === totalPaginas}
+            style={{ ...outlineBtn, padding: '6px 10px', opacity: paginaActual === totalPaginas ? 0.4 : 1, cursor: paginaActual === totalPaginas ? 'default' : 'pointer' }}
+          >
+            »
+          </button>
+        </div>
+      )}
     </div>
   );
 }
