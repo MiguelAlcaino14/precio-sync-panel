@@ -76,11 +76,12 @@ export default function Cambios() {
   const [loading, setLoading]           = useState(false);
   const [resultPublicar, setResultPublicar] = useState(null);
   const [pagina, setPagina]             = useState(1);
+  const [filtroProv, setFiltroProv]     = useState(null);
 
   useEffect(() => {
     apiFetch(`/cambios?estado=${estado}`)
       .then(r => r.json())
-      .then(data => { setCambios(Array.isArray(data) ? data : []); setSeleccion({}); setResultPublicar(null); setPagina(1); })
+      .then(data => { setCambios(Array.isArray(data) ? data : []); setSeleccion({}); setResultPublicar(null); setPagina(1); setFiltroProv(null); })
       .catch(() => {});
   }, [estado]);
 
@@ -116,7 +117,7 @@ export default function Cambios() {
   }
 
   async function aprobarTodo() {
-    const ids = cambios.map(c => c.id);
+    const ids = cambiosFilt.map(c => c.id);
     if (!ids.length) return;
     await aprobar(ids);
   }
@@ -144,11 +145,14 @@ export default function Cambios() {
     }
   }
 
-  const selIds       = Object.keys(seleccion).filter(id => seleccion[id]);
-  const totalPaginas = Math.ceil(cambios.length / POR_PAGINA) || 1;
-  const paginaActual = Math.min(pagina, totalPaginas);
-  const inicio       = (paginaActual - 1) * POR_PAGINA;
-  const cambiosPag   = cambios.slice(inicio, inicio + POR_PAGINA);
+  const proveedores     = [...new Set(cambios.map(c => c.producto?.proveedor?.nombre).filter(Boolean))].sort();
+  const cambiosFilt     = filtroProv ? cambios.filter(c => c.producto?.proveedor?.nombre === filtroProv) : cambios;
+
+  const selIds          = Object.keys(seleccion).filter(id => seleccion[id]);
+  const totalPaginas    = Math.ceil(cambiosFilt.length / POR_PAGINA) || 1;
+  const paginaActual    = Math.min(pagina, totalPaginas);
+  const inicio          = (paginaActual - 1) * POR_PAGINA;
+  const cambiosPag      = cambiosFilt.slice(inicio, inicio + POR_PAGINA);
 
   const variacion = c => c.costoAnterior
     ? ((c.costoNuevo - c.costoAnterior) / c.costoAnterior * 100).toFixed(1)
@@ -162,7 +166,7 @@ export default function Cambios() {
             Cambios de precio
           </h1>
           <p style={{ margin: '5px 0 0', fontSize: 13, color: C.textSec }}>
-            {cambios.length} registros · estado:{' '}
+            {cambiosFilt.length}{filtroProv ? ` de ${cambios.length}` : ''} registros · estado:{' '}
             <strong style={{ color: C.text }}>{ESTADOS.find(e => e.value === estado)?.label}</strong>
             {totalPaginas > 1 && (
               <> · página <strong style={{ color: C.text }}>{paginaActual}</strong> de {totalPaginas}</>
@@ -185,10 +189,10 @@ export default function Cambios() {
               </button>
               <button
                 onClick={aprobarTodo}
-                disabled={!cambios.length || loading}
-                style={{ ...solidBtn, background: '#0f172a', opacity: (!cambios.length || loading) ? 0.45 : 1, cursor: (!cambios.length || loading) ? 'default' : 'pointer' }}
+                disabled={!cambiosFilt.length || loading}
+                style={{ ...solidBtn, background: '#0f172a', opacity: (!cambiosFilt.length || loading) ? 0.45 : 1, cursor: (!cambiosFilt.length || loading) ? 'default' : 'pointer' }}
               >
-                {loading ? 'Procesando...' : `Aprobar todo (${cambios.length})`}
+                {loading ? 'Procesando...' : `Aprobar todo (${cambiosFilt.length})`}
               </button>
             </>
           )}
@@ -209,7 +213,7 @@ export default function Cambios() {
         <ResultadoPublicacion resultado={resultPublicar} onClose={() => setResultPublicar(null)} />
       )}
 
-      <div style={{ display: 'flex', gap: 1, marginBottom: 20, background: C.border, borderRadius: 6, overflow: 'hidden', width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 1, marginBottom: proveedores.length > 0 ? 12 : 20, background: C.border, borderRadius: 6, overflow: 'hidden', width: 'fit-content' }}>
         {ESTADOS.map(e => (
           <button
             key={e.value}
@@ -231,6 +235,49 @@ export default function Cambios() {
           </button>
         ))}
       </div>
+
+      {proveedores.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginRight: 2 }}>
+            PROVEEDOR
+          </span>
+          <button
+            onClick={() => { setFiltroProv(null); setPagina(1); }}
+            style={{
+              ...outlineBtn,
+              padding: '5px 12px',
+              fontSize: 12,
+              fontWeight: filtroProv === null ? 700 : 500,
+              background: filtroProv === null ? C.accent : C.surface,
+              color: filtroProv === null ? '#fff' : C.text,
+              border: filtroProv === null ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+            }}
+          >
+            Todos ({cambios.length})
+          </button>
+          {proveedores.map(p => {
+            const count = cambios.filter(c => c.producto?.proveedor?.nombre === p).length;
+            const activo = filtroProv === p;
+            return (
+              <button
+                key={p}
+                onClick={() => { setFiltroProv(p); setPagina(1); }}
+                style={{
+                  ...outlineBtn,
+                  padding: '5px 12px',
+                  fontSize: 12,
+                  fontWeight: activo ? 700 : 500,
+                  background: activo ? C.accent : C.surface,
+                  color: activo ? '#fff' : C.text,
+                  border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+                }}
+              >
+                {p} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: shadow.sm }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans }}>

@@ -45,15 +45,19 @@ const outlineBtn = {
 export default function Historial() {
   const [historial, setHistorial] = useState([]);
   const [pagina, setPagina]       = useState(1);
+  const [filtroProv, setFiltroProv] = useState(null);
 
   useEffect(() => {
     apiFetch('/exportar/historial').then(r => r.json()).then(data => setHistorial(Array.isArray(data) ? data : [])).catch(() => {});
   }, []);
 
-  const totalPaginas = Math.ceil(historial.length / POR_PAGINA) || 1;
+  const proveedores   = [...new Set(historial.map(h => h.proveedor?.nombre).filter(Boolean))].sort();
+  const historialFilt = filtroProv ? historial.filter(h => h.proveedor?.nombre === filtroProv) : historial;
+
+  const totalPaginas = Math.ceil(historialFilt.length / POR_PAGINA) || 1;
   const paginaActual = Math.min(pagina, totalPaginas);
   const inicio       = (paginaActual - 1) * POR_PAGINA;
-  const historialPag = historial.slice(inicio, inicio + POR_PAGINA);
+  const historialPag = historialFilt.slice(inicio, inicio + POR_PAGINA);
 
   return (
     <div>
@@ -62,12 +66,55 @@ export default function Historial() {
           Historial de importaciones
         </h1>
         <p style={{ margin: '5px 0 0', fontSize: 13, color: C.textSec }}>
-          {historial.length} importaciones registradas
+          {historialFilt.length}{filtroProv ? ` de ${historial.length}` : ''} importaciones registradas
           {totalPaginas > 1 && (
             <> · página <strong style={{ color: C.text }}>{paginaActual}</strong> de {totalPaginas}</>
           )}
         </p>
       </div>
+
+      {proveedores.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginRight: 2 }}>
+            PROVEEDOR
+          </span>
+          <button
+            onClick={() => { setFiltroProv(null); setPagina(1); }}
+            style={{
+              ...outlineBtn,
+              padding: '5px 12px',
+              fontSize: 12,
+              fontWeight: filtroProv === null ? 700 : 500,
+              background: filtroProv === null ? C.accent : C.surface,
+              color: filtroProv === null ? '#fff' : C.text,
+              border: filtroProv === null ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+            }}
+          >
+            Todos ({historial.length})
+          </button>
+          {proveedores.map(p => {
+            const count = historial.filter(h => h.proveedor?.nombre === p).length;
+            const activo = filtroProv === p;
+            return (
+              <button
+                key={p}
+                onClick={() => { setFiltroProv(p); setPagina(1); }}
+                style={{
+                  ...outlineBtn,
+                  padding: '5px 12px',
+                  fontSize: 12,
+                  fontWeight: activo ? 700 : 500,
+                  background: activo ? C.accent : C.surface,
+                  color: activo ? '#fff' : C.text,
+                  border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+                }}
+              >
+                {p} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div style={{
         background: C.surface,
