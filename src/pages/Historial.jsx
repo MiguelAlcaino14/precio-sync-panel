@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { C, F, shadow } from '../theme';
 import { apiFetch } from '../api';
 
+const POR_PAGINA = 20;
+
 const estadoBadge = {
   procesado:  { bg: C.greenBg,  color: C.green  },
   procesando: { bg: C.yellowBg, color: C.yellow },
@@ -28,12 +30,30 @@ const tdStyle = {
   verticalAlign: 'middle',
 };
 
+const outlineBtn = {
+  cursor: 'pointer',
+  padding: '6px 11px',
+  fontSize: 13,
+  fontWeight: 500,
+  borderRadius: 6,
+  border: `1px solid ${C.border}`,
+  background: C.surface,
+  color: C.text,
+  fontFamily: F.sans,
+};
+
 export default function Historial() {
   const [historial, setHistorial] = useState([]);
+  const [pagina, setPagina]       = useState(1);
 
   useEffect(() => {
     apiFetch('/exportar/historial').then(r => r.json()).then(data => setHistorial(Array.isArray(data) ? data : [])).catch(() => {});
   }, []);
+
+  const totalPaginas = Math.ceil(historial.length / POR_PAGINA) || 1;
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const inicio       = (paginaActual - 1) * POR_PAGINA;
+  const historialPag = historial.slice(inicio, inicio + POR_PAGINA);
 
   return (
     <div>
@@ -42,7 +62,10 @@ export default function Historial() {
           Historial de importaciones
         </h1>
         <p style={{ margin: '5px 0 0', fontSize: 13, color: C.textSec }}>
-          Registro completo de todos los archivos procesados por el sistema.
+          {historial.length} importaciones registradas
+          {totalPaginas > 1 && (
+            <> · página <strong style={{ color: C.text }}>{paginaActual}</strong> de {totalPaginas}</>
+          )}
         </p>
       </div>
 
@@ -66,14 +89,14 @@ export default function Historial() {
             </tr>
           </thead>
           <tbody>
-            {historial.length === 0 && (
+            {historialPag.length === 0 && (
               <tr>
                 <td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: C.textMuted, padding: 40 }}>
                   No se han procesado archivos todavía.
                 </td>
               </tr>
             )}
-            {historial.map(h => {
+            {historialPag.map(h => {
               const badge = estadoBadge[h.estado] || { bg: '#f1f5f9', color: C.textSec };
               const matchPct = h.totalProductos > 0
                 ? Math.round((h.matcheados / h.totalProductos) * 100)
@@ -123,6 +146,57 @@ export default function Historial() {
           </tbody>
         </table>
       </div>
+
+      {totalPaginas > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 16 }}>
+          <button
+            onClick={() => setPagina(1)}
+            disabled={paginaActual === 1}
+            style={{ ...outlineBtn, opacity: paginaActual === 1 ? 0.4 : 1, cursor: paginaActual === 1 ? 'default' : 'pointer' }}
+          >«</button>
+          <button
+            onClick={() => setPagina(p => Math.max(1, p - 1))}
+            disabled={paginaActual === 1}
+            style={{ ...outlineBtn, opacity: paginaActual === 1 ? 0.4 : 1, cursor: paginaActual === 1 ? 'default' : 'pointer' }}
+          >‹</button>
+
+          {Array.from({ length: totalPaginas }, (_, i) => i + 1)
+            .filter(n => n === 1 || n === totalPaginas || Math.abs(n - paginaActual) <= 2)
+            .reduce((acc, n, i, arr) => {
+              if (i > 0 && n - arr[i - 1] > 1) acc.push('…');
+              acc.push(n);
+              return acc;
+            }, [])
+            .map((n, i) =>
+              n === '…' ? (
+                <span key={`e-${i}`} style={{ padding: '0 4px', color: C.textMuted, fontSize: 13 }}>…</span>
+              ) : (
+                <button
+                  key={n}
+                  onClick={() => setPagina(n)}
+                  style={{
+                    ...outlineBtn,
+                    fontWeight: n === paginaActual ? 700 : 500,
+                    background: n === paginaActual ? C.accent : C.surface,
+                    color: n === paginaActual ? '#fff' : C.text,
+                    border: n === paginaActual ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+                  }}
+                >{n}</button>
+              )
+            )}
+
+          <button
+            onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+            disabled={paginaActual === totalPaginas}
+            style={{ ...outlineBtn, opacity: paginaActual === totalPaginas ? 0.4 : 1, cursor: paginaActual === totalPaginas ? 'default' : 'pointer' }}
+          >›</button>
+          <button
+            onClick={() => setPagina(totalPaginas)}
+            disabled={paginaActual === totalPaginas}
+            style={{ ...outlineBtn, opacity: paginaActual === totalPaginas ? 0.4 : 1, cursor: paginaActual === totalPaginas ? 'default' : 'pointer' }}
+          >»</button>
+        </div>
+      )}
     </div>
   );
 }
