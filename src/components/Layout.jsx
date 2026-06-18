@@ -1,12 +1,13 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { C, F } from '../theme';
-import { clearToken } from '../api';
+import { clearToken, clearUser } from '../api';
 
-const nav = [
-  { to: '/dashboard', label: 'Dashboard'   },
-  { to: '/cambios',   label: 'Cambios'     },
-  { to: '/reglas',    label: 'Markup'      },
-  { to: '/historial', label: 'Historial'   },
+const NAV_TODOS = [
+  { to: '/dashboard', label: 'Dashboard', roles: ['admin','operador'] },
+  { to: '/cambios',   label: 'Cambios',   roles: ['admin','operador'] },
+  { to: '/historial', label: 'Historial', roles: ['admin','operador'] },
+  { to: '/reglas',    label: 'Markup',    roles: ['admin'] },
+  { to: '/usuarios',  label: 'Usuarios',  roles: ['admin'] },
 ];
 
 const ICONS = {
@@ -22,20 +23,30 @@ const ICONS = {
       <path d="M7 7l5-5 5 5M7 17l5 5 5-5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
+  '/historial': (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
   '/reglas': (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" strokeLinecap="round"/>
       <rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4" strokeLinecap="round"/>
     </svg>
   ),
-  '/historial': (
+  '/usuarios': (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round"/>
     </svg>
   ),
 };
 
-export default function Layout({ onLogout }) {
+export default function Layout({ onLogout, user }) {
+  const rol = user?.rol || 'operador';
+  const nav = NAV_TODOS.filter(n => n.roles.includes(rol));
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: C.bg, fontFamily: F.sans }}>
       <aside style={{
@@ -50,13 +61,7 @@ export default function Layout({ onLogout }) {
         height: '100vh',
       }}>
         <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <p style={{
-            margin: 0,
-            fontSize: 15,
-            fontWeight: 700,
-            color: '#ffffff',
-            letterSpacing: '-0.01em',
-          }}>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '-0.01em' }}>
             Precio Sync
           </p>
           <p style={{ margin: '3px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.38)', letterSpacing: '0.01em' }}>
@@ -90,8 +95,18 @@ export default function Layout({ onLogout }) {
         </nav>
 
         <div style={{ padding: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          {user?.nombre && (
+            <div style={{ padding: '6px 12px', marginBottom: 4 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+                {user.nombre}
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: 10, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {rol}
+              </p>
+            </div>
+          )}
           <button
-            onClick={() => { clearToken(); onLogout(); }}
+            onClick={onLogout}
             style={{
               width: '100%',
               cursor: 'pointer',

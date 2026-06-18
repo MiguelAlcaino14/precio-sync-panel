@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { setToken } from '../api';
+import { setToken, setUser } from '../api';
 import { C, F, shadow } from '../theme';
 
 export default function Login({ onLogin }) {
@@ -22,6 +22,7 @@ export default function Login({ onLogin }) {
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Error al iniciar sesión'); return; }
       setToken(data.token);
+      setUser({ rol: data.rol, nombre: data.nombre });
       onLogin();
     } catch {
       setError('Error de conexión con la API');
