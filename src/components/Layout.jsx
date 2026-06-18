@@ -1,5 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { C, F } from '../theme';
+import { clearToken } from '../api';
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard'   },
@@ -34,7 +35,7 @@ const ICONS = {
   ),
 };
 
-export default function Layout() {
+export default function Layout({ onLogout }) {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: C.bg, fontFamily: F.sans }}>
       <aside style={{
@@ -88,10 +89,30 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-          <p style={{ margin: 0, fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.03em' }}>
-            Sistema 1 · v1.0.0
-          </p>
+        <div style={{ padding: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          <button
+            onClick={() => { clearToken(); onLogout(); }}
+            style={{
+              width: '100%',
+              cursor: 'pointer',
+              border: 'none',
+              padding: '8px 12px',
+              borderRadius: 6,
+              background: 'transparent',
+              color: 'rgba(255,255,255,0.4)',
+              fontSize: 12,
+              fontFamily: F.sans,
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+            </svg>
+            Cerrar sesión
+          </button>
         </div>
       </aside>
 

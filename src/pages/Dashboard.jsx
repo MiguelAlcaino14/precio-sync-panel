@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { C, F, shadow } from '../theme';
+import { apiFetch } from '../api';
 
 export default function Dashboard() {
   const [proveedores, setProveedores] = useState([]);
@@ -7,7 +8,7 @@ export default function Dashboard() {
   const [mensaje, setMensaje]         = useState({});
 
   useEffect(() => {
-    fetch('/api/proveedores').then(r => r.json()).then(setProveedores);
+    apiFetch('/proveedores').then(r => r.json()).then(data => setProveedores(Array.isArray(data) ? data : [])).catch(() => {});
   }, []);
 
   async function handleUpload(proveedorId, file) {
@@ -17,10 +18,10 @@ export default function Dashboard() {
     const form = new FormData();
     form.append('archivo', file);
     try {
-      const res  = await fetch(`/api/proveedores/${proveedorId}/importar`, { method: 'POST', body: form });
+      const res  = await apiFetch(`/proveedores/${proveedorId}/importar`, { method: 'POST', body: form });
       const data = await res.json();
       setMensaje(m => ({ ...m, [proveedorId]: data.mensaje || 'Importación en proceso' }));
-      setTimeout(() => fetch('/api/proveedores').then(r => r.json()).then(setProveedores), 3000);
+      setTimeout(() => apiFetch('/proveedores').then(r => r.json()).then(data => setProveedores(Array.isArray(data) ? data : [])).catch(() => {}), 3000);
     } catch {
       setMensaje(m => ({ ...m, [proveedorId]: 'Error al subir archivo' }));
     } finally {

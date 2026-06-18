@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { C, F, shadow } from '../theme';
+import { apiFetch } from '../api';
 
 const estadoBadge = {
   procesado:  { bg: C.greenBg,  color: C.green  },
@@ -31,7 +32,7 @@ export default function Historial() {
   const [historial, setHistorial] = useState([]);
 
   useEffect(() => {
-    fetch('/api/exportar/historial').then(r => r.json()).then(setHistorial);
+    apiFetch('/exportar/historial').then(r => r.json()).then(data => setHistorial(Array.isArray(data) ? data : [])).catch(() => {});
   }, []);
 
   return (

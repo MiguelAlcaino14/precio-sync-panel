@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { C, F, shadow, fmt } from '../theme';
+import { apiFetch } from '../api';
 
 const ESTADOS = [
   { value: 'pendiente', label: 'Pendientes' },
@@ -74,9 +75,10 @@ export default function Cambios() {
   const [resultPublicar, setResultPublicar] = useState(null);
 
   useEffect(() => {
-    fetch(`/api/cambios?estado=${estado}`)
+    apiFetch(`/cambios?estado=${estado}`)
       .then(r => r.json())
-      .then(data => { setCambios(data); setSeleccion({}); setResultPublicar(null); });
+      .then(data => { setCambios(Array.isArray(data) ? data : []); setSeleccion({}); setResultPublicar(null); })
+      .catch(() => {});
   }, [estado]);
 
   function toggleAll(checked) {
@@ -88,18 +90,23 @@ export default function Cambios() {
     setSeleccion(s => ({ ...s, [id]: !s[id] }));
   }
 
-  async function aprobar() {
-    const ids = Object.keys(seleccion).filter(id => seleccion[id]);
+  async function aprobar(idsOverride) {
+    const ids = idsOverride ?? Object.keys(seleccion).filter(id => seleccion[id]);
     if (!ids.length) return;
     setLoading(true);
-    await fetch('/api/cambios/aprobar', {
+    await apiFetch('/cambios/aprobar', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids, preciosVenta: preciosEdit }),
     });
     setCambios(c => c.filter(x => !ids.includes(x.id)));
     setSeleccion({});
     setLoading(false);
+  }
+
+  async function aprobarTodo() {
+    const ids = cambios.map(c => c.id);
+    if (!ids.length) return;
+    await aprobar(ids);
   }
 
   async function publicar() {
@@ -108,10 +115,9 @@ export default function Cambios() {
     setLoading(true);
     setResultPublicar(null);
     try {
-      const res  = await fetch('/api/publicar', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ ids }),
+      const res  = await apiFetch('/publicar', {
+        method: 'POST',
+        body:   JSON.stringify({ ids }),
       });
       const data = await res.json();
       setResultPublicar(data);
@@ -156,6 +162,13 @@ export default function Cambios() {
                 style={{ ...solidBtn, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer' }}
               >
                 {loading ? 'Procesando...' : `Aprobar${selIds.length ? ` (${selIds.length})` : ''}`}
+              </button>
+              <button
+                onClick={aprobarTodo}
+                disabled={!cambios.length || loading}
+                style={{ ...solidBtn, background: '#0f172a', opacity: (!cambios.length || loading) ? 0.45 : 1, cursor: (!cambios.length || loading) ? 'default' : 'pointer' }}
+              >
+                {loading ? 'Procesando...' : `Aprobar todo (${cambios.length})`}
               </button>
             </>
           )}

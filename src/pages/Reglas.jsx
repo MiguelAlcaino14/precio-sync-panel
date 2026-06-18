@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { C, F, shadow } from '../theme';
+import { apiFetch } from '../api';
 
 const vacioForm = { nombre: '', markupPct: '', categoria: '', costoMin: '', costoMax: '', prioridad: '0' };
 
@@ -51,7 +52,7 @@ export default function Reglas() {
   const [form, setForm]     = useState(vacioForm);
 
   useEffect(() => {
-    fetch('/api/reglas').then(r => r.json()).then(setReglas);
+    apiFetch('/reglas').then(r => r.json()).then(data => setReglas(Array.isArray(data) ? data : [])).catch(() => {});
   }, []);
 
   async function guardar() {
@@ -64,14 +65,14 @@ export default function Reglas() {
       costoMax:  form.costoMax  ? parseFloat(form.costoMax)  : null,
       prioridad: parseInt(form.prioridad) || 0,
     };
-    const res  = await fetch('/api/reglas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res  = await apiFetch('/reglas', { method: 'POST', body: JSON.stringify(body) });
     const data = await res.json();
     setReglas(r => [...r, data]);
     setForm(vacioForm);
   }
 
   async function eliminar(id) {
-    await fetch(`/api/reglas/${id}`, { method: 'DELETE' });
+    await apiFetch(`/reglas/${id}`, { method: 'DELETE' });
     setReglas(r => r.filter(x => x.id !== id));
   }
 
