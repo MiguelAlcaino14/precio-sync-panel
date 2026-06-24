@@ -116,6 +116,24 @@ export default function Cambios() {
     setLoading(false);
   }
 
+  async function rechazar(idsOverride) {
+    const ids = idsOverride ?? Object.keys(seleccion).filter(id => seleccion[id]);
+    if (!ids.length) return;
+    setLoading(true);
+    await apiFetch('/cambios/rechazar', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+    setCambios(c => {
+      const nuevos = c.filter(x => !ids.includes(x.id));
+      const totalPags = Math.ceil(nuevos.length / POR_PAGINA) || 1;
+      setPagina(p => Math.min(p, totalPags));
+      return nuevos;
+    });
+    setSeleccion({});
+    setLoading(false);
+  }
+
   async function aprobarTodo() {
     const ids = cambiosFilt.map(c => c.id);
     if (!ids.length) return;
@@ -179,6 +197,19 @@ export default function Cambios() {
             <>
               <button onClick={() => window.open('/api/exportar', '_blank')} style={outlineBtn}>
                 Exportar CSV
+              </button>
+              <button
+                onClick={() => rechazar()}
+                disabled={!selIds.length || loading}
+                style={{
+                  ...outlineBtn,
+                  opacity: (!selIds.length || loading) ? 0.45 : 1,
+                  cursor: (!selIds.length || loading) ? 'default' : 'pointer',
+                  color: selIds.length ? C.red : C.textMuted,
+                  border: `1px solid ${selIds.length ? C.red : C.border}`,
+                }}
+              >
+                {loading ? 'Procesando...' : `Rechazar${selIds.length ? ` (${selIds.length})` : ''}`}
               </button>
               <button
                 onClick={aprobar}

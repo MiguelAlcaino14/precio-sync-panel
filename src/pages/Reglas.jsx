@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { C, F, shadow } from '../theme';
 import { apiFetch } from '../api';
 
-const vacioForm = { nombre: '', markupPct: '', categoria: '', costoMin: '', costoMax: '', prioridad: '0' };
+const vacioForm = { nombre: '', markupPct: '', marca: '', categoria: '', costoMin: '', costoMax: '', prioridad: '0' };
 
 const thStyle = {
   padding: '10px 14px',
@@ -60,6 +60,7 @@ export default function Reglas() {
     const body = {
       nombre:    form.nombre,
       markupPct: parseFloat(form.markupPct),
+      marca:     form.marca     || null,
       categoria: form.categoria || null,
       costoMin:  form.costoMin  ? parseFloat(form.costoMin)  : null,
       costoMax:  form.costoMax  ? parseFloat(form.costoMax)  : null,
@@ -80,7 +81,7 @@ export default function Reglas() {
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>
-          Reglas de markup
+          Reglas de precio de venta
         </h1>
         <p style={{ margin: '5px 0 0', fontSize: 13, color: C.textSec }}>
           Define cómo se calcula el precio de venta a partir del costo. Se aplica la primera regla que coincida (mayor prioridad primero).
@@ -103,9 +104,14 @@ export default function Reglas() {
               onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
           </div>
           <div style={fieldStyle}>
-            <label style={labelStyle}>Markup %</label>
+            <label style={labelStyle}>Porcentaje %</label>
             <input style={{ ...inputStyle, width: 110 }} type="number" value={form.markupPct} placeholder="47"
               onChange={e => setForm(f => ({ ...f, markupPct: e.target.value }))} />
+          </div>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Marca</label>
+            <input style={inputStyle} value={form.marca} placeholder="Ej: Torre"
+              onChange={e => setForm(f => ({ ...f, marca: e.target.value }))} />
           </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Categoría</label>
@@ -158,7 +164,8 @@ export default function Reglas() {
           <thead>
             <tr>
               <th style={thStyle}>Nombre</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Markup</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>Precio de venta %</th>
+              <th style={thStyle}>Marca</th>
               <th style={thStyle}>Categoría</th>
               <th style={{ ...thStyle, textAlign: 'right' }}>Costo mín.</th>
               <th style={{ ...thStyle, textAlign: 'right' }}>Costo máx.</th>
@@ -169,7 +176,7 @@ export default function Reglas() {
           <tbody>
             {reglas.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: C.textMuted, padding: 36 }}>
+                <td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: C.textMuted, padding: 36 }}>
                   No hay reglas definidas. Agrega una para comenzar.
                 </td>
               </tr>
@@ -190,6 +197,9 @@ export default function Reglas() {
                   }}>
                     {r.markupPct}%
                   </span>
+                </td>
+                <td style={{ ...tdStyle, color: C.textSec, fontSize: 12 }}>
+                  {r.marca || '—'}
                 </td>
                 <td style={{ ...tdStyle, color: C.textSec, fontFamily: F.mono, fontSize: 12 }}>
                   {r.categoria || '—'}

@@ -5,8 +5,9 @@ import { clearToken, clearUser } from '../api';
 const NAV_TODOS = [
   { to: '/dashboard', label: 'Dashboard', roles: ['admin','operador'] },
   { to: '/cambios',   label: 'Cambios',   roles: ['admin','operador'] },
-  { to: '/historial', label: 'Historial', roles: ['admin','operador'] },
-  { to: '/reglas',    label: 'Markup',    roles: ['admin'] },
+  { to: '/historial',    label: 'Historial',      roles: ['admin','operador'] },
+  { to: '/proveedores', label: 'Proveedores',   roles: ['admin'] },
+  { to: '/reglas',      label: 'Precio de venta', roles: ['admin'] },
   { to: '/usuarios',  label: 'Usuarios',  roles: ['admin'] },
 ];
 
@@ -26,6 +27,13 @@ const ICONS = {
   '/historial': (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  '/proveedores': (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <rect x="1" y="16" width="22" height="5" rx="1" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5 16v-5a2 2 0 012-2h10a2 2 0 012 2v5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M9 9V7a3 3 0 016 0v2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
   '/reglas': (

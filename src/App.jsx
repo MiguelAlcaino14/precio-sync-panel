@@ -7,7 +7,8 @@ import Dashboard from './pages/Dashboard';
 import Cambios   from './pages/Cambios';
 import Reglas    from './pages/Reglas';
 import Historial from './pages/Historial';
-import Usuarios  from './pages/Usuarios';
+import Usuarios    from './pages/Usuarios';
+import Proveedores from './pages/Proveedores';
 
 export default function App() {
   const [autenticado, setAutenticado] = useState(!!getToken());
@@ -39,7 +40,8 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="cambios"   element={<Cambios />} />
           <Route path="historial" element={<Historial />} />
-          {esAdmin && <Route path="reglas"   element={<Reglas />} />}
+          {esAdmin && <Route path="proveedores" element={<Proveedores />} />}
+          {esAdmin && <Route path="reglas"      element={<Reglas />} />}
           {esAdmin && <Route path="usuarios" element={<Usuarios />} />}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>

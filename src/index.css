@@ -8,3 +8,4 @@ input:focus, select:focus { outline: none; border-color: #1d4ed8 !important; box
 input[type=number] { -moz-appearance: textfield; }
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+button:not(:disabled):hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: box-shadow 0.15s; }

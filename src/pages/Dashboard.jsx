@@ -2,13 +2,21 @@ import { useState, useEffect } from 'react';
 import { C, F, shadow } from '../theme';
 import { apiFetch } from '../api';
 
+const POR_PAGINA = 6;
+
 export default function Dashboard() {
   const [proveedores, setProveedores] = useState([]);
   const [uploading, setUploading]     = useState({});
   const [mensaje, setMensaje]         = useState({});
+  const [loading, setLoading]         = useState(true);
+  const [visibles, setVisibles]       = useState(POR_PAGINA);
 
   useEffect(() => {
-    apiFetch('/proveedores').then(r => r.json()).then(data => setProveedores(Array.isArray(data) ? data : [])).catch(() => {});
+    apiFetch('/proveedores')
+      .then(r => r.json())
+      .then(data => setProveedores(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   async function handleUpload(proveedorId, file) {
@@ -36,21 +44,54 @@ export default function Dashboard() {
         subtitle="Selecciona un proveedor y sube su lista de precios para iniciar el proceso de sincronización."
       />
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-        gap: 16,
-      }}>
-        {proveedores.map(p => (
-          <ProveedorCard
-            key={p.id}
-            proveedor={p}
-            uploading={uploading[p.id]}
-            mensaje={mensaje[p.id]}
-            onUpload={file => handleUpload(p.id, file)}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : proveedores.length === 0 ? (
+        <div style={{
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+          padding: '40px 24px', textAlign: 'center', boxShadow: shadow.sm,
+        }}>
+          <p style={{ margin: 0, fontSize: 14, color: C.textSec }}>
+            No hay proveedores activos. Crea uno en la sección Proveedores.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+            {proveedores.slice(0, visibles).map(p => (
+              <ProveedorCard
+                key={p.id}
+                proveedor={p}
+                uploading={uploading[p.id]}
+                mensaje={mensaje[p.id]}
+                onUpload={file => handleUpload(p.id, file)}
+              />
+            ))}
+          </div>
+          {visibles < proveedores.length && (
+            <div style={{ textAlign: 'center', marginTop: 20 }}>
+              <button
+                onClick={() => setVisibles(v => v + POR_PAGINA)}
+                style={{
+                  cursor: 'pointer',
+                  border: `1px solid ${C.border}`,
+                  padding: '8px 24px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  borderRadius: 6,
+                  background: C.surface,
+                  color: C.textSec,
+                  fontFamily: F.sans,
+                }}
+              >
+                Ver más ({proveedores.length - visibles} restantes)
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -102,7 +143,7 @@ function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload }) {
         <input
           type="file"
           style={{ display: 'none' }}
-          accept=".xlsx,.xls,.csv,.pdf"
+          accept=".xlsx,.xls,.csv,.pdf,.docx,.doc"
           disabled={uploading}
           onChange={e => onUpload(e.target.files[0])}
         />
@@ -137,6 +178,40 @@ function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload }) {
           <CheckIcon /> {mensaje}
         </p>
       )}
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div style={{
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: 8,
+      padding: '20px 22px',
+      boxShadow: shadow.sm,
+    }}>
+      <style>{`@keyframes shimmer{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}`}</style>
+      <div style={{ animation: 'shimmer 1.4s ease-in-out infinite' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div>
+            <div style={{ width: 140, height: 14, background: C.border, borderRadius: 4, marginBottom: 6 }} />
+            <div style={{ width: 80, height: 11, background: C.border, borderRadius: 4 }} />
+          </div>
+          <div style={{ width: 44, height: 20, background: C.border, borderRadius: 4 }} />
+        </div>
+        <div style={{ display: 'flex', gap: 24, paddingBottom: 16, marginBottom: 16, borderBottom: `1px solid ${C.border}` }}>
+          <div>
+            <div style={{ width: 36, height: 22, background: C.border, borderRadius: 4, marginBottom: 4 }} />
+            <div style={{ width: 60, height: 10, background: C.border, borderRadius: 4 }} />
+          </div>
+          <div>
+            <div style={{ width: 36, height: 22, background: C.border, borderRadius: 4, marginBottom: 4 }} />
+            <div style={{ width: 72, height: 10, background: C.border, borderRadius: 4 }} />
+          </div>
+        </div>
+        <div style={{ width: 110, height: 34, background: C.border, borderRadius: 6 }} />
+      </div>
     </div>
   );
 }
