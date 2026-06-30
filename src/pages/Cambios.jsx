@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { C, F, shadow, fmt } from '../theme';
+import { useState, useEffect, useRef } from 'react';
+import { C, F, shadow, fmt, table, btn } from '../theme';
 import { apiFetch } from '../api';
 
 const POR_PAGINA = 25;
@@ -11,79 +11,45 @@ const ESTADOS = [
   { value: 'publicado', label: 'Publicados' },
 ];
 
-const thStyle = {
-  padding: '10px 14px',
-  fontSize: 11,
-  fontWeight: 600,
-  color: C.textSec,
-  textAlign: 'left',
-  background: '#f8fafc',
-  borderBottom: `1px solid ${C.border}`,
-  whiteSpace: 'nowrap',
-  fontFamily: F.sans,
-  letterSpacing: '0.02em',
-};
-
-const tdStyle = {
-  padding: '11px 14px',
-  fontSize: 13,
-  borderBottom: `1px solid ${C.border}`,
-  color: C.text,
-  verticalAlign: 'middle',
-};
-
-const solidBtn = {
-  cursor: 'pointer',
-  border: 'none',
-  padding: '8px 16px',
-  fontSize: 13,
-  fontWeight: 600,
-  borderRadius: 6,
-  background: C.accent,
-  color: '#ffffff',
-  fontFamily: F.sans,
-};
-
-const outlineBtn = {
-  cursor: 'pointer',
-  padding: '7px 15px',
-  fontSize: 13,
-  fontWeight: 500,
-  borderRadius: 6,
-  border: `1px solid ${C.border}`,
-  background: C.surface,
-  color: C.text,
-  fontFamily: F.sans,
-};
-
-const greenBtn = {
-  cursor: 'pointer',
-  border: 'none',
-  padding: '8px 16px',
-  fontSize: 13,
-  fontWeight: 600,
-  borderRadius: 6,
-  background: C.green,
-  color: '#ffffff',
-  fontFamily: F.sans,
-};
-
 export default function Cambios() {
-  const [cambios, setCambios]           = useState([]);
-  const [seleccion, setSeleccion]       = useState({});
-  const [preciosEdit, setPreciosEdit]   = useState({});
-  const [estado, setEstado]             = useState('pendiente');
-  const [loading, setLoading]           = useState(false);
+  const [cambios, setCambios]               = useState([]);
+  const [seleccion, setSeleccion]           = useState({});
+  const [preciosEdit, setPreciosEdit]       = useState({});
+  const [estado, setEstado]                 = useState('pendiente');
+  const [loading, setLoading]               = useState(false);
   const [resultPublicar, setResultPublicar] = useState(null);
-  const [pagina, setPagina]             = useState(1);
-  const [filtroProv, setFiltroProv]     = useState(null);
+  const [pagina, setPagina]                 = useState(1);
+  const [filtroProv, setFiltroProv]         = useState(null);
+  const checkAllRef                         = useRef(null);
 
   useEffect(() => {
     apiFetch(`/cambios?estado=${estado}`)
       .then(r => r.json())
-      .then(data => { setCambios(Array.isArray(data) ? data : []); setSeleccion({}); setResultPublicar(null); setPagina(1); setFiltroProv(null); })
+      .then(data => {
+        setCambios(Array.isArray(data) ? data : []);
+        setSeleccion({});
+        setResultPublicar(null);
+        setPagina(1);
+        setFiltroProv(null);
+      })
       .catch(() => {});
   }, [estado]);
+
+  const proveedores  = [...new Set(cambios.map(c => c.producto?.proveedor?.nombre).filter(Boolean))].sort();
+  const cambiosFilt  = filtroProv ? cambios.filter(c => c.producto?.proveedor?.nombre === filtroProv) : cambios;
+  const totalPaginas = Math.ceil(cambiosFilt.length / POR_PAGINA) || 1;
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const inicio       = (paginaActual - 1) * POR_PAGINA;
+  const cambiosPag   = cambiosFilt.slice(inicio, inicio + POR_PAGINA);
+  const selIds       = Object.keys(seleccion).filter(id => seleccion[id]);
+  const allChecked   = cambiosPag.length > 0 && cambiosPag.every(c => seleccion[c.id]);
+  const someChecked  = cambiosPag.some(c => seleccion[c.id]);
+
+  useEffect(() => {
+    if (checkAllRef.current) {
+      checkAllRef.current.indeterminate = someChecked && !allChecked;
+    }
+  }, [someChecked, allChecked]);
 
   function toggleAll(checked) {
     if (checked) setSeleccion(s => ({ ...s, ...Object.fromEntries(cambiosPag.map(c => [c.id, true])) }));
@@ -99,7 +65,7 @@ export default function Cambios() {
   }
 
   async function aprobar(idsOverride) {
-    const ids = idsOverride ?? Object.keys(seleccion).filter(id => seleccion[id]);
+    const ids = idsOverride ?? selIds;
     if (!ids.length) return;
     setLoading(true);
     await apiFetch('/cambios/aprobar', {
@@ -117,7 +83,7 @@ export default function Cambios() {
   }
 
   async function rechazar(idsOverride) {
-    const ids = idsOverride ?? Object.keys(seleccion).filter(id => seleccion[id]);
+    const ids = idsOverride ?? selIds;
     if (!ids.length) return;
     setLoading(true);
     await apiFetch('/cambios/rechazar', {
@@ -137,22 +103,21 @@ export default function Cambios() {
   async function aprobarTodo() {
     const ids = cambiosFilt.map(c => c.id);
     if (!ids.length) return;
+    if (!window.confirm(`¿Aprobar todos los ${ids.length} cambios pendientes? Esta acción no se puede deshacer.`)) return;
     await aprobar(ids);
   }
 
   async function publicar() {
-    const ids = Object.keys(seleccion).filter(id => seleccion[id]);
-    if (!ids.length) return;
+    if (!selIds.length) return;
     setLoading(true);
     setResultPublicar(null);
     try {
       const res  = await apiFetch('/publicar', {
         method: 'POST',
-        body:   JSON.stringify({ ids }),
+        body:   JSON.stringify({ ids: selIds }),
       });
       const data = await res.json();
       setResultPublicar(data);
-      // Remover publicados de la vista
       const idsPublicados = (data.resultados || []).filter(r => r.ok).map(r => r.id);
       setCambios(c => c.filter(x => !idsPublicados.includes(x.id)));
       setSeleccion({});
@@ -162,15 +127,6 @@ export default function Cambios() {
       setLoading(false);
     }
   }
-
-  const proveedores     = [...new Set(cambios.map(c => c.producto?.proveedor?.nombre).filter(Boolean))].sort();
-  const cambiosFilt     = filtroProv ? cambios.filter(c => c.producto?.proveedor?.nombre === filtroProv) : cambios;
-
-  const selIds          = Object.keys(seleccion).filter(id => seleccion[id]);
-  const totalPaginas    = Math.ceil(cambiosFilt.length / POR_PAGINA) || 1;
-  const paginaActual    = Math.min(pagina, totalPaginas);
-  const inicio          = (paginaActual - 1) * POR_PAGINA;
-  const cambiosPag      = cambiosFilt.slice(inicio, inicio + POR_PAGINA);
 
   const variacion = c => c.costoAnterior
     ? ((c.costoNuevo - c.costoAnterior) / c.costoAnterior * 100).toFixed(1)
@@ -195,14 +151,14 @@ export default function Cambios() {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {estado === 'pendiente' && (
             <>
-              <button onClick={() => window.open('/api/exportar', '_blank')} style={outlineBtn}>
+              <button onClick={() => window.open('/api/exportar', '_blank')} style={btn.outline}>
                 Exportar CSV
               </button>
               <button
                 onClick={() => rechazar()}
                 disabled={!selIds.length || loading}
                 style={{
-                  ...outlineBtn,
+                  ...btn.outline,
                   opacity: (!selIds.length || loading) ? 0.45 : 1,
                   cursor: (!selIds.length || loading) ? 'default' : 'pointer',
                   color: selIds.length ? C.red : C.textMuted,
@@ -212,16 +168,17 @@ export default function Cambios() {
                 {loading ? 'Procesando...' : `Rechazar${selIds.length ? ` (${selIds.length})` : ''}`}
               </button>
               <button
-                onClick={aprobar}
+                onClick={() => aprobar()}
                 disabled={!selIds.length || loading}
-                style={{ ...solidBtn, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer' }}
+                style={{ ...btn.solid, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer' }}
               >
                 {loading ? 'Procesando...' : `Aprobar${selIds.length ? ` (${selIds.length})` : ''}`}
               </button>
+              <div style={{ width: 1, height: 28, background: C.border, alignSelf: 'center' }} />
               <button
                 onClick={aprobarTodo}
                 disabled={!cambiosFilt.length || loading}
-                style={{ ...solidBtn, background: '#0f172a', opacity: (!cambiosFilt.length || loading) ? 0.45 : 1, cursor: (!cambiosFilt.length || loading) ? 'default' : 'pointer' }}
+                style={{ ...btn.solid, background: '#0f172a', opacity: (!cambiosFilt.length || loading) ? 0.45 : 1, cursor: (!cambiosFilt.length || loading) ? 'default' : 'pointer' }}
               >
                 {loading ? 'Procesando...' : `Aprobar todo (${cambiosFilt.length})`}
               </button>
@@ -231,7 +188,7 @@ export default function Cambios() {
             <button
               onClick={publicar}
               disabled={!selIds.length || loading}
-              style={{ ...greenBtn, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ ...btn.green, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
             >
               <JumpsellerIcon />
               {loading ? 'Publicando...' : `Publicar en JumpSeller${selIds.length ? ` (${selIds.length})` : ''}`}
@@ -275,7 +232,7 @@ export default function Cambios() {
           <button
             onClick={() => { setFiltroProv(null); setPagina(1); }}
             style={{
-              ...outlineBtn,
+              ...btn.outline,
               padding: '5px 12px',
               fontSize: 12,
               fontWeight: filtroProv === null ? 700 : 500,
@@ -294,7 +251,7 @@ export default function Cambios() {
                 key={p}
                 onClick={() => { setFiltroProv(p); setPagina(1); }}
                 style={{
-                  ...outlineBtn,
+                  ...btn.outline,
                   padding: '5px 12px',
                   fontSize: 12,
                   fontWeight: activo ? 700 : 500,
@@ -314,22 +271,29 @@ export default function Cambios() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans }}>
           <thead>
             <tr>
-              <th style={{ ...thStyle, width: 40 }}>
-                <input type="checkbox" onChange={e => toggleAll(e.target.checked)} style={{ accentColor: C.accent }} />
+              <th style={{ ...table.th, width: 40 }}>
+                <input
+                  ref={checkAllRef}
+                  type="checkbox"
+                  checked={allChecked}
+                  onChange={e => toggleAll(e.target.checked)}
+                  style={{ accentColor: C.accent }}
+                />
               </th>
-              <th style={thStyle}>SKU</th>
-              <th style={thStyle}>Producto</th>
-              <th style={thStyle}>Proveedor</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Costo anterior</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Costo nuevo</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Variación</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Precio de venta</th>
+              <th style={table.th}>SKU</th>
+              <th style={table.th}>Producto</th>
+              <th style={table.th}>Proveedor</th>
+              <th style={table.th}>Marca</th>
+              <th style={{ ...table.th, textAlign: 'right' }}>Costo anterior</th>
+              <th style={{ ...table.th, textAlign: 'right' }}>Costo nuevo</th>
+              <th style={{ ...table.th, textAlign: 'right' }}>Variación</th>
+              <th style={{ ...table.th, textAlign: 'right' }}>Precio de venta</th>
             </tr>
           </thead>
           <tbody>
             {cambiosPag.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: C.textMuted, padding: 40 }}>
+                <td colSpan={9} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
                   No hay registros en este estado.
                 </td>
               </tr>
@@ -338,28 +302,33 @@ export default function Cambios() {
               const pct  = variacion(c);
               const sube = pct > 0;
               const sel  = !!seleccion[c.id];
+              const precioBajoCosto = preciosEdit[c.id] !== undefined && Number(preciosEdit[c.id]) > 0 && Number(preciosEdit[c.id]) < c.costoNuevo;
 
               return (
-                <tr key={c.id} style={{ background: sel ? '#eff6ff' : C.surface }}>
-                  <td style={tdStyle}>
+                <tr key={c.id} style={{ background: sel ? C.rowSelected : C.surface }}>
+                  <td style={table.td}>
                     <input type="checkbox" checked={sel} onChange={() => toggleOne(c.id)} style={{ accentColor: C.accent }} />
                   </td>
-                  <td style={{ ...tdStyle, fontFamily: F.mono, fontSize: 11, color: C.textSec }}>
+                  <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec }}>
                     {c.producto.sku}
                   </td>
-                  <td style={{ ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>
+                  <td style={{ ...table.td, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}
+                      title={c.producto.nombre}>
                     {c.producto.nombre}
                   </td>
-                  <td style={{ ...tdStyle, color: C.textSec, fontSize: 12 }}>
+                  <td style={{ ...table.td, color: C.textSec, fontSize: 12 }}>
                     {c.producto.proveedor?.nombre}
                   </td>
-                  <td style={{ ...tdStyle, fontFamily: F.mono, textAlign: 'right', color: C.textSec }}>
+                  <td style={{ ...table.td, color: C.textSec, fontSize: 12 }}>
+                    {c.producto.marca || '—'}
+                  </td>
+                  <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', color: C.textSec }}>
                     {c.costoAnterior ? fmt(c.costoAnterior) : '—'}
                   </td>
-                  <td style={{ ...tdStyle, fontFamily: F.mono, textAlign: 'right', fontWeight: 600 }}>
+                  <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontWeight: 600 }}>
                     {fmt(c.costoNuevo)}
                   </td>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>
+                  <td style={{ ...table.td, textAlign: 'right' }}>
                     {pct ? (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 3,
@@ -374,19 +343,32 @@ export default function Cambios() {
                       <span style={{ color: C.textMuted }}>—</span>
                     )}
                   </td>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>
+                  <td style={{ ...table.td, textAlign: 'right' }}>
                     {estado === 'pendiente' ? (
-                      <input
-                        type="number"
-                        defaultValue={c.precioSugerido ?? ''}
-                        onChange={e => setPreciosEdit(p => ({ ...p, [c.id]: Number(e.target.value) }))}
-                        style={{
-                          width: 110, padding: '5px 8px',
-                          background: '#f8fafc', border: `1px solid ${C.border}`,
-                          borderRadius: 5, fontSize: 12, fontFamily: F.mono,
-                          textAlign: 'right', color: C.text,
-                        }}
-                      />
+                      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                        <input
+                          type="number"
+                          defaultValue={c.precioSugerido ?? ''}
+                          onChange={e => setPreciosEdit(p => ({ ...p, [c.id]: Number(e.target.value) }))}
+                          style={{
+                            width: 110, padding: '5px 8px',
+                            background: C.surfaceHover,
+                            border: `1px solid ${precioBajoCosto ? C.red : C.border}`,
+                            borderRadius: 5, fontSize: 12, fontFamily: F.mono,
+                            textAlign: 'right', color: C.text,
+                          }}
+                        />
+                        {precioBajoCosto && (
+                          <span style={{ fontSize: 10, color: C.red, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                            ⚠ Bajo el costo
+                          </span>
+                        )}
+                        {c.precioActual && (
+                          <span style={{ fontSize: 10, color: C.textMuted, whiteSpace: 'nowrap' }}>
+                            Publicado: {fmt(c.precioActual)}
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span style={{ fontFamily: F.mono, fontSize: 12 }}>
                         {fmt(c.precioSugerido ?? c.precioActual ?? 0)}
@@ -400,67 +382,58 @@ export default function Cambios() {
         </table>
       </div>
 
-      {totalPaginas > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 16 }}>
-          <button
-            onClick={() => setPagina(1)}
-            disabled={paginaActual === 1}
-            style={{ ...outlineBtn, padding: '6px 10px', opacity: paginaActual === 1 ? 0.4 : 1, cursor: paginaActual === 1 ? 'default' : 'pointer' }}
-          >
-            «
-          </button>
-          <button
-            onClick={() => setPagina(p => Math.max(1, p - 1))}
-            disabled={paginaActual === 1}
-            style={{ ...outlineBtn, padding: '6px 12px', opacity: paginaActual === 1 ? 0.4 : 1, cursor: paginaActual === 1 ? 'default' : 'pointer' }}
-          >
-            ‹
-          </button>
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        onChange={setPagina}
+      />
+    </div>
+  );
+}
 
-          {Array.from({ length: totalPaginas }, (_, i) => i + 1)
-            .filter(n => n === 1 || n === totalPaginas || Math.abs(n - paginaActual) <= 2)
-            .reduce((acc, n, i, arr) => {
-              if (i > 0 && n - arr[i - 1] > 1) acc.push('…');
-              acc.push(n);
-              return acc;
-            }, [])
-            .map((n, i) =>
-              n === '…' ? (
-                <span key={`ellipsis-${i}`} style={{ padding: '0 4px', color: C.textMuted, fontSize: 13 }}>…</span>
-              ) : (
-                <button
-                  key={n}
-                  onClick={() => setPagina(n)}
-                  style={{
-                    ...outlineBtn,
-                    padding: '6px 11px',
-                    fontWeight: n === paginaActual ? 700 : 500,
-                    background: n === paginaActual ? C.accent : C.surface,
-                    color: n === paginaActual ? '#fff' : C.text,
-                    border: n === paginaActual ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
-                  }}
-                >
-                  {n}
-                </button>
-              )
-            )}
+function Paginacion({ paginaActual, totalPaginas, onChange }) {
+  if (totalPaginas <= 1) return null;
+  const pagesArr = Array.from({ length: totalPaginas }, (_, i) => i + 1)
+    .filter(n => n === 1 || n === totalPaginas || Math.abs(n - paginaActual) <= 2)
+    .reduce((acc, n, i, arr) => {
+      if (i > 0 && n - arr[i - 1] > 1) acc.push('…');
+      acc.push(n);
+      return acc;
+    }, []);
 
+  const navBtn = (disabled) => ({
+    cursor: 'pointer', padding: '6px 11px', fontSize: 13, fontWeight: 500,
+    borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface,
+    color: C.text, fontFamily: F.sans,
+    opacity: disabled ? 0.4 : 1,
+    ...(disabled && { cursor: 'default' }),
+  });
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 16 }}>
+      <button onClick={() => onChange(1)} disabled={paginaActual === 1} style={{ ...navBtn(paginaActual === 1), padding: '6px 10px' }}>«</button>
+      <button onClick={() => onChange(p => Math.max(1, p - 1))} disabled={paginaActual === 1} style={{ ...navBtn(paginaActual === 1), padding: '6px 12px' }}>‹</button>
+      {pagesArr.map((n, i) =>
+        n === '…' ? (
+          <span key={`e-${i}`} style={{ padding: '0 4px', color: C.textMuted, fontSize: 13 }}>…</span>
+        ) : (
           <button
-            onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
-            disabled={paginaActual === totalPaginas}
-            style={{ ...outlineBtn, padding: '6px 12px', opacity: paginaActual === totalPaginas ? 0.4 : 1, cursor: paginaActual === totalPaginas ? 'default' : 'pointer' }}
+            key={n}
+            onClick={() => onChange(n)}
+            style={{
+              ...navBtn(false), padding: '6px 11px',
+              fontWeight: n === paginaActual ? 700 : 500,
+              background: n === paginaActual ? C.accent : C.surface,
+              color: n === paginaActual ? '#fff' : C.text,
+              border: n === paginaActual ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+            }}
           >
-            ›
+            {n}
           </button>
-          <button
-            onClick={() => setPagina(totalPaginas)}
-            disabled={paginaActual === totalPaginas}
-            style={{ ...outlineBtn, padding: '6px 10px', opacity: paginaActual === totalPaginas ? 0.4 : 1, cursor: paginaActual === totalPaginas ? 'default' : 'pointer' }}
-          >
-            »
-          </button>
-        </div>
+        )
       )}
+      <button onClick={() => onChange(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas} style={{ ...navBtn(paginaActual === totalPaginas), padding: '6px 12px' }}>›</button>
+      <button onClick={() => onChange(totalPaginas)} disabled={paginaActual === totalPaginas} style={{ ...navBtn(paginaActual === totalPaginas), padding: '6px 10px' }}>»</button>
     </div>
   );
 }
@@ -478,7 +451,6 @@ function ResultadoPublicacion({ resultado, onClose }) {
   }
 
   const errores = (resultado.resultados || []).filter(r => !r.ok);
-
   return (
     <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 8, background: C.greenBg, border: `1px solid ${C.green}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

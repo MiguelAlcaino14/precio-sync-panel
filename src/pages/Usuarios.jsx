@@ -61,21 +61,26 @@ const inputStyle = {
 };
 
 export default function Usuarios() {
-  const [usuarios, setUsuarios]       = useState([]);
-  const [modalCrear, setModalCrear]   = useState(false);
-  const [modalPass, setModalPass]     = useState(null);  // { id, nombre }
-  const [error, setError]             = useState('');
-  const [loading, setLoading]         = useState(false);
+  const [usuarios, setUsuarios]         = useState([]);
+  const [loadingTabla, setLoadingTabla] = useState(true);
+  const [modalCrear, setModalCrear]     = useState(false);
+  const [modalPass, setModalPass]       = useState(null);
+  const [error, setError]               = useState('');
+  const [loading, setLoading]           = useState(false);
 
-  // Formulario crear
   const [form, setForm] = useState({ nombre: '', email: '', usuario: '', password: '', rol: 'operador' });
-  // Formulario contraseña
   const [newPass, setNewPass] = useState('');
 
   useEffect(() => { cargar(); }, []);
 
   async function cargar() {
-    apiFetch('/usuarios').then(r => r.json()).then(data => setUsuarios(Array.isArray(data) ? data : [])).catch(() => {});
+    setLoadingTabla(true);
+    try {
+      const res  = await apiFetch('/usuarios');
+      const data = await res.json();
+      setUsuarios(Array.isArray(data) ? data : []);
+    } catch {}
+    finally { setLoadingTabla(false); }
   }
 
   async function crearUsuario(e) {
@@ -144,17 +149,28 @@ export default function Usuarios() {
             </tr>
           </thead>
           <tbody>
-            {usuarios.length === 0 && (
+            {loadingTabla && (
+              Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i}>
+                  {Array.from({ length: 6 }).map((_, j) => (
+                    <td key={j} style={tdStyle}>
+                      <div style={{ height: 13, background: C.border, borderRadius: 4, animation: 'shimmer 1.4s ease-in-out infinite', width: j === 0 ? '70%' : '55%' }} />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+            {!loadingTabla && usuarios.length === 0 && (
               <tr>
                 <td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: C.textMuted, padding: 40 }}>
                   No hay usuarios registrados.
                 </td>
               </tr>
             )}
-            {usuarios.map(u => {
+            {!loadingTabla && usuarios.map(u => {
               const badge = ROL_BADGE[u.rol] || ROL_BADGE.operador;
               return (
-                <tr key={u.id} style={{ background: u.activo ? C.surface : '#fafafa' }}>
+                <tr key={u.id} style={{ background: u.activo ? C.surface : C.redBg, opacity: u.activo ? 1 : 0.75 }}>
                   <td style={{ ...tdStyle, fontWeight: 500 }}>{u.nombre}</td>
                   <td style={{ ...tdStyle, fontFamily: F.mono, fontSize: 12, color: C.textSec }}>{u.usuario}</td>
                   <td style={{ ...tdStyle, fontSize: 12, color: C.textSec }}>{u.email}</td>

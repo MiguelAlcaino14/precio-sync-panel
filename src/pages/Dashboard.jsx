@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { C, F, shadow } from '../theme';
 import { apiFetch } from '../api';
+import PageHeader from '../components/PageHeader';
 
 const POR_PAGINA = 6;
 
@@ -10,6 +11,7 @@ export default function Dashboard() {
   const [mensaje, setMensaje]         = useState({});
   const [loading, setLoading]         = useState(true);
   const [visibles, setVisibles]       = useState(POR_PAGINA);
+  const [stats, setStats]             = useState({ pendientes: null, ultimaSync: null, loadingStats: true });
 
   useEffect(() => {
     apiFetch('/proveedores')
@@ -17,21 +19,34 @@ export default function Dashboard() {
       .then(data => setProveedores(Array.isArray(data) ? data : []))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    Promise.all([
+      apiFetch('/cambios?estado=pendiente').then(r => r.json()).catch(() => []),
+      apiFetch('/exportar/historial').then(r => r.json()).catch(() => []),
+    ]).then(([cambios, hist]) => {
+      setStats({
+        pendientes:  Array.isArray(cambios) ? cambios.length : 0,
+        ultimaSync:  Array.isArray(hist) && hist.length > 0 ? hist[0].createdAt : null,
+        loadingStats: false,
+      });
+    });
   }, []);
 
   async function handleUpload(proveedorId, file) {
     if (!file) return;
     setUploading(u => ({ ...u, [proveedorId]: true }));
-    setMensaje(m => ({ ...m, [proveedorId]: '' }));
-    const form = new FormData();
-    form.append('archivo', file);
+    setMensaje(m => ({ ...m, [proveedorId]: null }));
+    const formData = new FormData();
+    formData.append('archivo', file);
     try {
-      const res  = await apiFetch(`/proveedores/${proveedorId}/importar`, { method: 'POST', body: form });
+      const res  = await apiFetch(`/proveedores/${proveedorId}/importar`, { method: 'POST', body: formData });
       const data = await res.json();
-      setMensaje(m => ({ ...m, [proveedorId]: data.mensaje || 'Importación en proceso' }));
-      setTimeout(() => apiFetch('/proveedores').then(r => r.json()).then(data => setProveedores(Array.isArray(data) ? data : [])).catch(() => {}), 3000);
+      setMensaje(m => ({ ...m, [proveedorId]: { text: data.mensaje || 'Importación en proceso', ok: true } }));
+      setTimeout(() => {
+        apiFetch('/proveedores').then(r => r.json()).then(d => setProveedores(Array.isArray(d) ? d : [])).catch(() => {});
+      }, 3000);
     } catch {
-      setMensaje(m => ({ ...m, [proveedorId]: 'Error al subir archivo' }));
+      setMensaje(m => ({ ...m, [proveedorId]: { text: 'Error al subir archivo', ok: false } }));
     } finally {
       setUploading(u => ({ ...u, [proveedorId]: false }));
     }
@@ -43,6 +58,16 @@ export default function Dashboard() {
         title="Dashboard"
         subtitle="Selecciona un proveedor y sube su lista de precios para iniciar el proceso de sincronización."
       />
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+        <StatsCard label="Proveedores activos" value={loading ? null : proveedores.length} loading={loading} />
+        <StatsCard label="Cambios pendientes"  value={stats.pendientes}                   loading={stats.loadingStats} />
+        <StatsCard
+          label="Última importación"
+          value={stats.ultimaSync ? new Date(stats.ultimaSync).toLocaleDateString('es-CL') : '—'}
+          loading={stats.loadingStats}
+        />
+      </div>
 
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
@@ -96,6 +121,21 @@ export default function Dashboard() {
   );
 }
 
+function StatsCard({ label, value, loading }) {
+  return (
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '16px 20px', boxShadow: shadow.sm }}>
+      {loading ? (
+        <div style={{ width: 48, height: 24, background: C.border, borderRadius: 4, marginBottom: 6, animation: 'shimmer 1.4s ease-in-out infinite' }} />
+      ) : (
+        <p style={{ margin: '0 0 4px', fontSize: 24, fontWeight: 700, color: C.text, fontFamily: F.mono, lineHeight: 1 }}>
+          {value ?? '—'}
+        </p>
+      )}
+      <p style={{ margin: 0, fontSize: 11, color: C.textMuted, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</p>
+    </div>
+  );
+}
+
 function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload }) {
   const tipo = p.config?.tipo === 'pdf' ? 'PDF' : 'Excel';
 
@@ -113,12 +153,8 @@ function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload }) {
           <p style={{ margin: '3px 0 0', fontSize: 12, color: C.textMuted }}>Formato: {tipo}</p>
         </div>
         <span style={{
-          fontSize: 11,
-          fontWeight: 600,
-          padding: '3px 8px',
-          borderRadius: 4,
-          background: C.accentLight,
-          color: C.accent,
+          fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 4,
+          background: C.accentLight, color: C.accent,
         }}>
           Activo
         </span>
@@ -148,34 +184,21 @@ function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload }) {
           onChange={e => onUpload(e.target.files[0])}
         />
         <span style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
           cursor: uploading ? 'default' : 'pointer',
-          padding: '8px 16px',
-          fontSize: 13,
-          fontWeight: 600,
-          borderRadius: 6,
+          padding: '8px 16px', fontSize: 13, fontWeight: 600, borderRadius: 6,
           border: 'none',
           background: uploading ? C.border : C.accent,
           color: uploading ? C.textMuted : '#ffffff',
           transition: 'background 0.15s',
         }}>
-          {uploading ? (
-            <>
-              <SpinIcon /> Procesando...
-            </>
-          ) : (
-            <>
-              <UploadIcon /> Subir archivo
-            </>
-          )}
+          {uploading ? <><SpinIcon /> Procesando...</> : <><UploadIcon /> Subir archivo</>}
         </span>
       </label>
 
       {mensaje && (
-        <p style={{ margin: '10px 0 0', fontSize: 12, color: C.green, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <CheckIcon /> {mensaje}
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: mensaje.ok ? C.green : C.red, display: 'flex', alignItems: 'center', gap: 4 }}>
+          {mensaje.ok ? <CheckIcon /> : '⚠'} {mensaje.text}
         </p>
       )}
     </div>
@@ -184,14 +207,7 @@ function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload }) {
 
 function SkeletonCard() {
   return (
-    <div style={{
-      background: C.surface,
-      border: `1px solid ${C.border}`,
-      borderRadius: 8,
-      padding: '20px 22px',
-      boxShadow: shadow.sm,
-    }}>
-      <style>{`@keyframes shimmer{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}`}</style>
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '20px 22px', boxShadow: shadow.sm }}>
       <div style={{ animation: 'shimmer 1.4s ease-in-out infinite' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
@@ -216,19 +232,6 @@ function SkeletonCard() {
   );
 }
 
-function PageHeader({ title, subtitle }) {
-  return (
-    <div style={{ marginBottom: 28 }}>
-      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>
-        {title}
-      </h1>
-      {subtitle && (
-        <p style={{ margin: '6px 0 0', fontSize: 13, color: C.textSec, lineHeight: 1.5 }}>{subtitle}</p>
-      )}
-    </div>
-  );
-}
-
 function UploadIcon() {
   return (
     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
@@ -239,8 +242,8 @@ function UploadIcon() {
 
 function SpinIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"
+         style={{ animation: 'spin 0.8s linear infinite' }}>
       <path d="M21 12a9 9 0 11-9-9"/>
     </svg>
   );

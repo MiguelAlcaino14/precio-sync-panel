@@ -1,6 +1,7 @@
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { C, F } from '../theme';
-import { clearToken, clearUser } from '../api';
+import { C, F, shadow } from '../theme';
+import { clearToken, clearUser, apiFetch } from '../api';
 
 const NAV_TODOS = [
   { to: '/dashboard', label: 'Dashboard', roles: ['admin','operador'] },
@@ -50,6 +51,220 @@ const ICONS = {
     </svg>
   ),
 };
+
+function tiempoRelativo(fecha) {
+  const diff = Date.now() - new Date(fecha).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'hace un momento';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h}h`;
+  const d = Math.floor(h / 24);
+  return `hace ${d} día${d > 1 ? 's' : ''}`;
+}
+
+function Notificaciones() {
+  const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [dropTop, setDropTop] = useState(0);
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+
+  const noLeidas = items.filter(n => !n.leida).length;
+
+  async function cargar() {
+    try {
+      const res = await apiFetch('/notificaciones');
+      if (res.ok) setItems(await res.json());
+    } catch {}
+  }
+
+  useEffect(() => {
+    cargar();
+    const id = setInterval(cargar, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutside(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [open]);
+
+  function toggleOpen() {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const dropH = 420;
+      const top = rect.top + dropH > window.innerHeight
+        ? Math.max(8, window.innerHeight - dropH - 8)
+        : rect.top;
+      setDropTop(top);
+    }
+    setOpen(v => !v);
+  }
+
+  async function marcarUna(id) {
+    try {
+      await apiFetch(`/notificaciones/${id}/leer`, { method: 'PATCH' });
+      setItems(prev => prev.filter(n => n.id !== id));
+    } catch {}
+  }
+
+  async function marcarTodas() {
+    try {
+      await apiFetch('/notificaciones/leer-todas', { method: 'PATCH' });
+      setItems([]);
+      setOpen(false);
+    } catch {}
+  }
+
+  return (
+    <div ref={wrapRef}>
+      {/* Campana */}
+      <button
+        ref={btnRef}
+        onClick={toggleOpen}
+        style={{
+          width: '100%',
+          cursor: 'pointer',
+          border: 'none',
+          padding: '8px 12px',
+          borderRadius: 6,
+          background: open ? 'rgba(255,255,255,0.08)' : 'transparent',
+          color: 'rgba(255,255,255,0.4)',
+          fontSize: 12,
+          fontFamily: F.sans,
+          textAlign: 'left',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 4,
+        }}
+      >
+        <span style={{ position: 'relative', flexShrink: 0, display: 'flex' }}>
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          {noLeidas > 0 && (
+            <span style={{
+              position: 'absolute',
+              top: -5,
+              right: -5,
+              background: C.red,
+              color: '#fff',
+              fontSize: 9,
+              fontWeight: 700,
+              borderRadius: 9,
+              minWidth: 14,
+              height: 14,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 3px',
+              lineHeight: 1,
+              pointerEvents: 'none',
+            }}>
+              {noLeidas > 99 ? '99+' : noLeidas}
+            </span>
+          )}
+        </span>
+        Notificaciones
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div style={{
+          position: 'fixed',
+          left: 234,
+          top: dropTop,
+          width: 300,
+          background: C.surface,
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          boxShadow: shadow.md,
+          zIndex: 1000,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          {/* Cabecera dropdown */}
+          <div style={{
+            padding: '10px 14px',
+            borderBottom: `1px solid ${C.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+              Notificaciones{noLeidas > 0 ? ` (${noLeidas})` : ''}
+            </span>
+            {items.length > 0 && (
+              <button
+                onClick={marcarTodas}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  color: C.accent,
+                  fontSize: 11,
+                  cursor: 'pointer',
+                  fontFamily: F.sans,
+                  padding: 0,
+                }}
+              >
+                Marcar todas
+              </button>
+            )}
+          </div>
+
+          {/* Lista */}
+          <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+            {items.length === 0 ? (
+              <p style={{
+                margin: 0,
+                padding: '24px 14px',
+                fontSize: 12,
+                color: C.textMuted,
+                textAlign: 'center',
+              }}>
+                Sin notificaciones pendientes
+              </p>
+            ) : (
+              items.map(n => (
+                <div
+                  key={n.id}
+                  onClick={() => marcarUna(n.id)}
+                  style={{
+                    padding: '10px 14px',
+                    borderBottom: `1px solid ${C.border}`,
+                    cursor: 'pointer',
+                    background: 'transparent',
+                    transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.accentLight; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: C.text }}>
+                    {n.titulo}
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: C.textSec, lineHeight: 1.4 }}>
+                    {n.mensaje}
+                  </p>
+                  <p style={{ margin: '5px 0 0', fontSize: 10, color: C.textMuted }}>
+                    {tiempoRelativo(n.createdAt)}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Layout({ onLogout, user }) {
   const rol = user?.rol || 'operador';
@@ -101,6 +316,10 @@ export default function Layout({ onLogout, user }) {
             </NavLink>
           ))}
         </nav>
+
+        <div style={{ padding: '0 10px 0', borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 8 }}>
+          <Notificaciones />
+        </div>
 
         <div style={{ padding: '12px 10px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           {user?.nombre && (
