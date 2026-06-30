@@ -5,12 +5,20 @@ import PageHeader from '../components/PageHeader';
 
 const POR_PAGINA = 6;
 
+const TEMAS = [
+  { value: null,        label: 'Todos' },
+  { value: 'aseo',      label: 'Aseo' },
+  { value: 'libreria',  label: 'Librería' },
+  { value: 'alimentos', label: 'Alimentos' },
+];
+
 export default function Dashboard() {
   const [proveedores, setProveedores] = useState([]);
   const [uploading, setUploading]     = useState({});
   const [mensaje, setMensaje]         = useState({});
   const [loading, setLoading]         = useState(true);
   const [visibles, setVisibles]       = useState(POR_PAGINA);
+  const [filtroTema, setFiltroTema]   = useState(null);
   const [stats, setStats]             = useState({ pendientes: null, ultimaSync: null, loadingStats: true });
 
   useEffect(() => {
@@ -31,6 +39,12 @@ export default function Dashboard() {
       });
     });
   }, []);
+
+  useEffect(() => { setVisibles(POR_PAGINA); }, [filtroTema]);
+
+  const proveedoresFiltrados = filtroTema
+    ? proveedores.filter(p => p.tema === filtroTema)
+    : proveedores;
 
   async function handleUpload(proveedorId, file) {
     if (!file) return;
@@ -59,8 +73,8 @@ export default function Dashboard() {
         subtitle="Selecciona un proveedor y sube su lista de precios para iniciar el proceso de sincronización."
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
-        <StatsCard label="Proveedores activos" value={loading ? null : proveedores.length} loading={loading} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+        <StatsCard label="Proveedores activos" value={loading ? null : proveedoresFiltrados.length} loading={loading} />
         <StatsCard label="Cambios pendientes"  value={stats.pendientes}                   loading={stats.loadingStats} />
         <StatsCard
           label="Última importación"
@@ -69,23 +83,67 @@ export default function Dashboard() {
         />
       </div>
 
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+        {TEMAS.map(t => {
+          const activo = filtroTema === t.value;
+          const count  = t.value === null ? proveedores.length : proveedores.filter(p => p.tema === t.value).length;
+          return (
+            <button
+              key={String(t.value)}
+              onClick={() => setFiltroTema(t.value)}
+              style={{
+                cursor: 'pointer',
+                padding: '6px 14px',
+                fontSize: 12,
+                fontWeight: 600,
+                borderRadius: 6,
+                border: activo ? 'none' : `1px solid ${C.border}`,
+                background: activo ? C.accent : C.surface,
+                color: activo ? '#ffffff' : C.textSec,
+                fontFamily: F.sans,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'background 0.15s, color 0.15s',
+              }}
+            >
+              {t.label}
+              {!loading && (
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '1px 6px',
+                  borderRadius: 10,
+                  background: activo ? 'rgba(255,255,255,0.25)' : C.border,
+                  color: activo ? '#ffffff' : C.textMuted,
+                }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
-      ) : proveedores.length === 0 ? (
+      ) : proveedoresFiltrados.length === 0 ? (
         <div style={{
           background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
           padding: '40px 24px', textAlign: 'center', boxShadow: shadow.sm,
         }}>
           <p style={{ margin: 0, fontSize: 14, color: C.textSec }}>
-            No hay proveedores activos. Crea uno en la sección Proveedores.
+            {filtroTema
+              ? `No hay proveedores en la categoría "${TEMAS.find(t => t.value === filtroTema)?.label}".`
+              : 'No hay proveedores activos. Crea uno en la sección Proveedores.'}
           </p>
         </div>
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-            {proveedores.slice(0, visibles).map(p => (
+            {proveedoresFiltrados.slice(0, visibles).map(p => (
               <ProveedorCard
                 key={p.id}
                 proveedor={p}
@@ -95,7 +153,7 @@ export default function Dashboard() {
               />
             ))}
           </div>
-          {visibles < proveedores.length && (
+          {visibles < proveedoresFiltrados.length && (
             <div style={{ textAlign: 'center', marginTop: 20 }}>
               <button
                 onClick={() => setVisibles(v => v + POR_PAGINA)}
@@ -111,7 +169,7 @@ export default function Dashboard() {
                   fontFamily: F.sans,
                 }}
               >
-                Ver más ({proveedores.length - visibles} restantes)
+                Ver más ({proveedoresFiltrados.length - visibles} restantes)
               </button>
             </div>
           )}
@@ -136,8 +194,16 @@ function StatsCard({ label, value, loading }) {
   );
 }
 
+const TEMA_LABEL = { aseo: 'Aseo', libreria: 'Librería', alimentos: 'Alimentos' };
+const TEMA_COLOR = {
+  aseo:      { bg: '#dbeafe', color: '#1d4ed8' },
+  libreria:  { bg: '#d1fae5', color: '#059669' },
+  alimentos: { bg: '#fef3c7', color: '#d97706' },
+};
+
 function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload }) {
   const tipo = p.config?.tipo === 'pdf' ? 'PDF' : 'Excel';
+  const temaStyle = TEMA_COLOR[p.tema] || { bg: C.border, color: C.textSec };
 
   return (
     <div style={{
@@ -152,12 +218,22 @@ function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload }) {
           <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: C.text }}>{p.nombre}</p>
           <p style={{ margin: '3px 0 0', fontSize: 12, color: C.textMuted }}>Formato: {tipo}</p>
         </div>
-        <span style={{
-          fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 4,
-          background: C.accentLight, color: C.accent,
-        }}>
-          Activo
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 4,
+            background: C.accentLight, color: C.accent,
+          }}>
+            Activo
+          </span>
+          {p.tema && (
+            <span style={{
+              fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4,
+              background: temaStyle.bg, color: temaStyle.color,
+            }}>
+              {TEMA_LABEL[p.tema] ?? p.tema}
+            </span>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 24, marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
