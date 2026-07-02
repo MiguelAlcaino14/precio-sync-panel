@@ -13,15 +13,67 @@ const TEMA_BADGE = {
   aseo:      { bg: '#ffedd5', color: '#c2410c', label: 'Aseo' },
 };
 
+const CAMPOS_VACIO = {
+  colSku: '', colNombre: '', colPrecio: '',
+  colMarca: '', colBarras: '', hoja: '',
+  precioIncluyeIVA: false, factorIVA: '1.19',
+  patronCodigo: '', separadorMiles: '.',
+};
+
 const FORM_VACIO = {
   nombre: '',
   slug: '',
   tema: '',
   descuento: '0',
   driveFolderId: '',
-  config: '{}',
   activo: true,
+  configTipo: 'ia',
+  configCampos: { ...CAMPOS_VACIO },
 };
+
+function inferirTipo(cfg) {
+  if (!cfg || typeof cfg !== 'object') return 'ia';
+  const t = cfg.tipo;
+  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai'].includes(t)) return t;
+  if (t === 'pdf') return 'pdf';
+  if (t === 'ia')  return 'ia';
+  if (cfg.colSku || t === 'xlsx') return 'xlsx';
+  return 'ia';
+}
+
+function parseCampos(cfg) {
+  return {
+    colSku:           cfg.colSku           || '',
+    colNombre:        cfg.colNombre        || '',
+    colPrecio:        cfg.colPrecio        || '',
+    colMarca:         cfg.colMarca         || '',
+    colBarras:        cfg.colBarras        || '',
+    hoja:             cfg.hoja != null     ? String(cfg.hoja) : '',
+    precioIncluyeIVA: cfg.precioIncluyeIVA ?? false,
+    factorIVA:        cfg.factorIVA != null ? String(cfg.factorIVA) : '1.19',
+    patronCodigo:     cfg.patronCodigo     || '',
+    separadorMiles:   cfg.separadorMiles   || '.',
+  };
+}
+
+function buildConfig(tipo, c) {
+  if (tipo === 'ia') return { tipo: 'ia' };
+  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai'].includes(tipo)) return { tipo };
+  if (tipo === 'pdf') {
+    const r = { tipo: 'pdf', precioIncluyeIVA: c.precioIncluyeIVA };
+    if (c.patronCodigo)  r.patronCodigo  = c.patronCodigo;
+    if (c.separadorMiles) r.separadorMiles = c.separadorMiles;
+    if (!c.precioIncluyeIVA) r.factorIVA = parseFloat(c.factorIVA) || 1.19;
+    return r;
+  }
+  const r = { colSku: c.colSku, colNombre: c.colNombre, colPrecio: c.colPrecio };
+  if (c.colMarca)  r.colMarca  = c.colMarca;
+  if (c.colBarras) r.colBarras = c.colBarras;
+  if (c.hoja)      r.hoja      = isNaN(c.hoja) ? c.hoja : Number(c.hoja);
+  r.precioIncluyeIVA = c.precioIncluyeIVA;
+  if (!c.precioIncluyeIVA) r.factorIVA = parseFloat(c.factorIVA) || 1.19;
+  return r;
+}
 
 const thStyle = {
   padding: '10px 14px', fontSize: 11, fontWeight: 600, color: C.textSec,
@@ -94,14 +146,16 @@ export default function Proveedores() {
   }
 
   function abrirEditar(p) {
+    const cfg = p.config ?? {};
     setForm({
       nombre:        p.nombre,
       slug:          p.slug,
       tema:          p.tema || '',
       descuento:     String(p.descuento ?? 0),
       driveFolderId: p.driveFolderId || '',
-      config:        JSON.stringify(p.config ?? {}, null, 2),
       activo:        p.activo,
+      configTipo:    inferirTipo(cfg),
+      configCampos:  parseCampos(cfg),
     });
     setEditId(p.id);
     setError('');
@@ -116,14 +170,14 @@ export default function Proveedores() {
 
   async function guardar() {
     setError('');
-    let configObj;
-    try {
-      configObj = JSON.parse(form.config || '{}');
-      if (typeof configObj !== 'object' || Array.isArray(configObj) || configObj === null) throw new Error();
-    } catch {
-      setError('Config debe ser un objeto JSON válido. Revisa la sintaxis.');
-      return;
+    if (form.configTipo === 'xlsx') {
+      const { colSku, colNombre, colPrecio } = form.configCampos;
+      if (!colSku || !colNombre || !colPrecio) {
+        setError('Para Excel: SKU, Nombre y Precio son obligatorios.');
+        return;
+      }
     }
+    const configObj = buildConfig(form.configTipo, form.configCampos);
 
     const body = {
       nombre:        form.nombre.trim(),
@@ -222,10 +276,92 @@ export default function Proveedores() {
             </div>
 
             <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>Config (JSON)</label>
-              <textarea style={{ ...inputStyle, fontFamily: F.mono, fontSize: 12, minHeight: 80, resize: 'vertical' }}
-                value={form.config} onChange={e => setForm(f => ({ ...f, config: e.target.value }))} spellCheck={false} />
+              <label style={labelStyle}>Tipo de importación *</label>
+              <select style={{ ...inputStyle, cursor: 'pointer' }} value={form.configTipo}
+                onChange={e => setForm(f => ({ ...f, configTipo: e.target.value, configCampos: { ...CAMPOS_VACIO } }))}>
+                <option value="ia">IA (automático — Excel y PDF)</option>
+                <option value="xlsx">Excel (columnas manuales)</option>
+                <option value="pdf">PDF (patrón manual)</option>
+                <option value="acco-brand">Parser especial: ACCO Brand</option>
+                <option value="carlos-gardy">Parser especial: Carlos Gardy</option>
+                <option value="engatel">Parser especial: ENGATEL</option>
+                <option value="scai">Parser especial: SCAI</option>
+              </select>
             </div>
+
+            {form.configTipo === 'ia' && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans, background: '#f0fdf4', padding: '8px 12px', borderRadius: 6, border: '1px solid #bbf7d0' }}>
+                  El parser IA detecta las columnas automáticamente. No requiere configuración adicional.
+                </p>
+              </div>
+            )}
+
+            {['acco-brand','carlos-gardy','engatel','scai'].includes(form.configTipo) && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans, background: '#eff6ff', padding: '8px 12px', borderRadius: 6, border: '1px solid #bfdbfe' }}>
+                  Parser especial sin configuración adicional requerida.
+                </p>
+              </div>
+            )}
+
+            {form.configTipo === 'xlsx' && (<>
+              {[
+                { key: 'colSku',    label: 'Columna SKU *',    ph: 'Ej: CODIGO' },
+                { key: 'colNombre', label: 'Columna Nombre *', ph: 'Ej: DESCRIPCION' },
+                { key: 'colPrecio', label: 'Columna Precio *', ph: 'Ej: PRECIO NETO' },
+                { key: 'colMarca',  label: 'Columna Marca',    ph: '(opcional)' },
+                { key: 'colBarras', label: 'Columna Código de barras', ph: '(opcional)' },
+                { key: 'hoja',      label: 'Hoja (nombre o número)', ph: 'Ej: Hoja1 ó 0' },
+              ].map(({ key, label, ph }) => (
+                <div key={key} style={fieldStyle}>
+                  <label style={labelStyle}>{label}</label>
+                  <input style={inputStyle} value={form.configCampos[key]} placeholder={ph}
+                    onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, [key]: e.target.value } }))} />
+                </div>
+              ))}
+              <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
+                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 400 }}>
+                  <input type="checkbox" checked={form.configCampos.precioIncluyeIVA}
+                    onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, precioIncluyeIVA: e.target.checked } }))} />
+                  El precio en el Excel ya incluye IVA
+                </label>
+              </div>
+              {!form.configCampos.precioIncluyeIVA && (
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Factor IVA</label>
+                  <input style={inputStyle} type="number" step="0.01" value={form.configCampos.factorIVA} placeholder="1.19"
+                    onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, factorIVA: e.target.value } }))} />
+                </div>
+              )}
+            </>)}
+
+            {form.configTipo === 'pdf' && (<>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Patrón código (regex)</label>
+                <input style={{ ...inputStyle, fontFamily: F.mono }} value={form.configCampos.patronCodigo} placeholder="Ej: ^\d{6,7}"
+                  onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, patronCodigo: e.target.value } }))} />
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>Separador de miles</label>
+                <input style={inputStyle} value={form.configCampos.separadorMiles} placeholder="."
+                  onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, separadorMiles: e.target.value } }))} />
+              </div>
+              <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
+                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 400 }}>
+                  <input type="checkbox" checked={form.configCampos.precioIncluyeIVA}
+                    onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, precioIncluyeIVA: e.target.checked } }))} />
+                  El precio en el PDF ya incluye IVA
+                </label>
+              </div>
+              {!form.configCampos.precioIncluyeIVA && (
+                <div style={fieldStyle}>
+                  <label style={labelStyle}>Factor IVA</label>
+                  <input style={inputStyle} type="number" step="0.01" value={form.configCampos.factorIVA} placeholder="1.19"
+                    onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, factorIVA: e.target.value } }))} />
+                </div>
+              )}
+            </>)}
           </div>
 
           {error && <p style={{ margin: '0 0 12px', fontSize: 12, color: C.red, fontWeight: 500 }}>{error}</p>}
