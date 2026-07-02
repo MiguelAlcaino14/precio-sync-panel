@@ -380,7 +380,7 @@ export default function Proveedores() {
           <thead>
             <tr>
               <th style={thStyle}>Nombre</th>
-              <th style={thStyle}>Slug</th>
+              <th style={thStyle}>Apodo</th>
               <th style={thStyle}>Tema</th>
               <th style={{ ...thStyle, textAlign: 'right' }}>Descuento %</th>
               <th style={thStyle}>Drive Folder</th>
