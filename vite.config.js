@@ -11,7 +11,7 @@ export default defineConfig({
       interval: 1000,
     },
     proxy: {
-      '/api': process.env.API_URL || 'http://localhost:3001',
+      '/api': process.env.API_URL || 'http://localhost:3002',
     },
   },
 });

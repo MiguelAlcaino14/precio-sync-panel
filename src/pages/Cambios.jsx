@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { C, F, shadow, fmt, table, btn } from '../theme';
 import { apiFetch } from '../api';
 
-const POR_PAGINA = 25;
+const OPCIONES_PAGINA = [10, 25, 50, 100];
 
 const ESTADOS = [
   { value: 'pendiente', label: 'Pendientes' },
@@ -19,8 +19,22 @@ export default function Cambios() {
   const [loading, setLoading]               = useState(false);
   const [resultPublicar, setResultPublicar] = useState(null);
   const [pagina, setPagina]                 = useState(1);
+  const [porPagina, setPorPagina]           = useState(25);
   const [filtroProv, setFiltroProv]         = useState(null);
+  const [alertCounts, setAlertCounts]       = useState({ pendiente: 0, aprobado: 0 });
   const checkAllRef                         = useRef(null);
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch('/cambios?estado=pendiente').then(r => r.json()).catch(() => []),
+      apiFetch('/cambios?estado=aprobado').then(r => r.json()).catch(() => []),
+    ]).then(([pend, apro]) => {
+      setAlertCounts({
+        pendiente: Array.isArray(pend) ? pend.length : 0,
+        aprobado:  Array.isArray(apro) ? apro.length : 0,
+      });
+    });
+  }, []);
 
   useEffect(() => {
     apiFetch(`/cambios?estado=${estado}`)
@@ -37,10 +51,10 @@ export default function Cambios() {
 
   const proveedores  = [...new Set(cambios.map(c => c.producto?.proveedor?.nombre).filter(Boolean))].sort();
   const cambiosFilt  = filtroProv ? cambios.filter(c => c.producto?.proveedor?.nombre === filtroProv) : cambios;
-  const totalPaginas = Math.ceil(cambiosFilt.length / POR_PAGINA) || 1;
+  const totalPaginas = Math.ceil(cambiosFilt.length / porPagina) || 1;
   const paginaActual = Math.min(pagina, totalPaginas);
-  const inicio       = (paginaActual - 1) * POR_PAGINA;
-  const cambiosPag   = cambiosFilt.slice(inicio, inicio + POR_PAGINA);
+  const inicio       = (paginaActual - 1) * porPagina;
+  const cambiosPag   = cambiosFilt.slice(inicio, inicio + porPagina);
   const selIds       = Object.keys(seleccion).filter(id => seleccion[id]);
   const allChecked   = cambiosPag.length > 0 && cambiosPag.every(c => seleccion[c.id]);
   const someChecked  = cambiosPag.some(c => seleccion[c.id]);
@@ -74,7 +88,7 @@ export default function Cambios() {
     });
     setCambios(c => {
       const nuevos = c.filter(x => !ids.includes(x.id));
-      const totalPags = Math.ceil(nuevos.length / POR_PAGINA) || 1;
+      const totalPags = Math.ceil(nuevos.length / porPagina) || 1;
       setPagina(p => Math.min(p, totalPags));
       return nuevos;
     });
@@ -92,7 +106,7 @@ export default function Cambios() {
     });
     setCambios(c => {
       const nuevos = c.filter(x => !ids.includes(x.id));
-      const totalPags = Math.ceil(nuevos.length / POR_PAGINA) || 1;
+      const totalPags = Math.ceil(nuevos.length / porPagina) || 1;
       setPagina(p => Math.min(p, totalPags));
       return nuevos;
     });
@@ -134,8 +148,32 @@ export default function Cambios() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-        <div>
+      {(alertCounts.pendiente > 0 || alertCounts.aprobado > 0) && (
+        <div style={{
+          marginBottom: 20,
+          borderRadius: 8,
+          border: `1px solid #f59e0b`,
+          background: '#fffbeb',
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}>
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#d97706" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <p style={{ margin: 0, fontSize: 13, color: '#92400e', fontWeight: 500, lineHeight: 1.5 }}>
+            {[
+              alertCounts.pendiente > 0 && `${alertCounts.pendiente} cambio${alertCounts.pendiente !== 1 ? 's' : ''} pendiente${alertCounts.pendiente !== 1 ? 's' : ''} de revisión`,
+              alertCounts.aprobado  > 0 && `${alertCounts.aprobado} aprobado${alertCounts.aprobado !== 1 ? 's' : ''} sin publicar en JumpSeller`,
+            ].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>
             Cambios de precio
           </h1>
@@ -148,60 +186,57 @@ export default function Cambios() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {estado === 'pendiente' && (
-            <>
-              <button onClick={() => window.open('/api/exportar', '_blank')} style={btn.outline}>
-                Exportar CSV
-              </button>
-              <button
-                onClick={() => rechazar()}
-                disabled={!selIds.length || loading}
-                style={{
-                  ...btn.outline,
-                  opacity: (!selIds.length || loading) ? 0.45 : 1,
-                  cursor: (!selIds.length || loading) ? 'default' : 'pointer',
-                  color: selIds.length ? C.red : C.textMuted,
-                  border: `1px solid ${selIds.length ? C.red : C.border}`,
-                }}
-              >
-                {loading ? 'Procesando...' : `Rechazar${selIds.length ? ` (${selIds.length})` : ''}`}
-              </button>
-              <button
-                onClick={() => aprobar()}
-                disabled={!selIds.length || loading}
-                style={{ ...btn.solid, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer' }}
-              >
-                {loading ? 'Procesando...' : `Aprobar${selIds.length ? ` (${selIds.length})` : ''}`}
-              </button>
-              <div style={{ width: 1, height: 28, background: C.border, alignSelf: 'center' }} />
-              <button
-                onClick={aprobarTodo}
-                disabled={!cambiosFilt.length || loading}
-                style={{ ...btn.solid, background: '#0f172a', opacity: (!cambiosFilt.length || loading) ? 0.45 : 1, cursor: (!cambiosFilt.length || loading) ? 'default' : 'pointer' }}
-              >
-                {loading ? 'Procesando...' : `Aprobar todo (${cambiosFilt.length})`}
-              </button>
-            </>
-          )}
-          {estado === 'aprobado' && (
-            <button
-              onClick={publicar}
-              disabled={!selIds.length || loading}
-              style={{ ...btn.green, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              <JumpsellerIcon />
-              {loading ? 'Publicando...' : `Publicar en JumpSeller${selIds.length ? ` (${selIds.length})` : ''}`}
+        {estado === 'pendiente' && (
+          <div className="actions-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <button onClick={() => window.open('/api/exportar', '_blank')} style={{ ...btn.outline, fontSize: 12 }}>
+              Exportar CSV
             </button>
-          )}
-        </div>
+            <button
+              onClick={() => rechazar()}
+              disabled={!selIds.length || loading}
+              style={{
+                ...btn.outline, fontSize: 12,
+                opacity: (!selIds.length || loading) ? 0.45 : 1,
+                cursor: (!selIds.length || loading) ? 'default' : 'pointer',
+                color: selIds.length ? C.red : C.textMuted,
+                border: `1px solid ${selIds.length ? C.red : C.border}`,
+              }}
+            >
+              {loading ? 'Procesando...' : `Rechazar${selIds.length ? ` (${selIds.length})` : ''}`}
+            </button>
+            <button
+              onClick={() => aprobar()}
+              disabled={!selIds.length || loading}
+              style={{ ...btn.solid, fontSize: 12, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer' }}
+            >
+              {loading ? 'Procesando...' : `Aprobar${selIds.length ? ` (${selIds.length})` : ''}`}
+            </button>
+            <button
+              onClick={aprobarTodo}
+              disabled={!cambiosFilt.length || loading}
+              style={{ ...btn.solid, fontSize: 12, background: '#0f172a', opacity: (!cambiosFilt.length || loading) ? 0.45 : 1, cursor: (!cambiosFilt.length || loading) ? 'default' : 'pointer' }}
+            >
+              {loading ? 'Procesando...' : `Aprobar todo (${cambiosFilt.length})`}
+            </button>
+          </div>
+        )}
+        {estado === 'aprobado' && (
+          <button
+            onClick={publicar}
+            disabled={!selIds.length || loading}
+            style={{ ...btn.green, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
+          >
+            <JumpsellerIcon />
+            {loading ? 'Publicando...' : `Publicar en JumpSeller${selIds.length ? ` (${selIds.length})` : ''}`}
+          </button>
+        )}
       </div>
 
       {resultPublicar && (
         <ResultadoPublicacion resultado={resultPublicar} onClose={() => setResultPublicar(null)} />
       )}
 
-      <div style={{ display: 'flex', gap: 1, marginBottom: proveedores.length > 0 ? 12 : 20, background: C.border, borderRadius: 6, overflow: 'hidden', width: 'fit-content' }}>
+      <div className="estado-tabs" style={{ display: 'flex', gap: 1, marginBottom: proveedores.length > 0 ? 12 : 20, background: C.border, borderRadius: 6, overflow: 'hidden', width: 'fit-content' }}>
         {ESTADOS.map(e => (
           <button
             key={e.value}
@@ -267,7 +302,7 @@ export default function Cambios() {
         </div>
       )}
 
-      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: shadow.sm }}>
+      <div className="scroll-x" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: shadow.sm }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans }}>
           <thead>
             <tr>
@@ -386,13 +421,14 @@ export default function Cambios() {
         paginaActual={paginaActual}
         totalPaginas={totalPaginas}
         onChange={setPagina}
+        porPagina={porPagina}
+        onCambiarPorPagina={n => { setPorPagina(n); setPagina(1); }}
       />
     </div>
   );
 }
 
-function Paginacion({ paginaActual, totalPaginas, onChange }) {
-  if (totalPaginas <= 1) return null;
+function Paginacion({ paginaActual, totalPaginas, onChange, porPagina, onCambiarPorPagina }) {
   const pagesArr = Array.from({ length: totalPaginas }, (_, i) => i + 1)
     .filter(n => n === 1 || n === totalPaginas || Math.abs(n - paginaActual) <= 2)
     .reduce((acc, n, i, arr) => {
@@ -402,38 +438,52 @@ function Paginacion({ paginaActual, totalPaginas, onChange }) {
     }, []);
 
   const navBtn = (disabled) => ({
-    cursor: 'pointer', padding: '6px 11px', fontSize: 13, fontWeight: 500,
+    cursor: disabled ? 'default' : 'pointer', padding: '6px 11px', fontSize: 13, fontWeight: 500,
     borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface,
-    color: C.text, fontFamily: F.sans,
-    opacity: disabled ? 0.4 : 1,
-    ...(disabled && { cursor: 'default' }),
+    color: C.text, fontFamily: F.sans, opacity: disabled ? 0.4 : 1,
   });
 
+  const selectStyle = {
+    padding: '5px 8px', fontSize: 12, fontFamily: F.sans, borderRadius: 6,
+    border: `1px solid ${C.border}`, background: C.surface, color: C.text, cursor: 'pointer',
+  };
+
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 16 }}>
-      <button onClick={() => onChange(1)} disabled={paginaActual === 1} style={{ ...navBtn(paginaActual === 1), padding: '6px 10px' }}>«</button>
-      <button onClick={() => onChange(p => Math.max(1, p - 1))} disabled={paginaActual === 1} style={{ ...navBtn(paginaActual === 1), padding: '6px 12px' }}>‹</button>
-      {pagesArr.map((n, i) =>
-        n === '…' ? (
-          <span key={`e-${i}`} style={{ padding: '0 4px', color: C.textMuted, fontSize: 13 }}>…</span>
-        ) : (
-          <button
-            key={n}
-            onClick={() => onChange(n)}
-            style={{
-              ...navBtn(false), padding: '6px 11px',
-              fontWeight: n === paginaActual ? 700 : 500,
-              background: n === paginaActual ? C.accent : C.surface,
-              color: n === paginaActual ? '#fff' : C.text,
-              border: n === paginaActual ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
-            }}
-          >
-            {n}
-          </button>
-        )
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 12, color: C.textSec, fontFamily: F.sans }}>Mostrar</span>
+        <select style={selectStyle} value={porPagina} onChange={e => onCambiarPorPagina(Number(e.target.value))}>
+          {OPCIONES_PAGINA.map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+        <span style={{ fontSize: 12, color: C.textSec, fontFamily: F.sans }}>por página</span>
+      </div>
+      {totalPaginas > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => onChange(1)} disabled={paginaActual === 1} style={{ ...navBtn(paginaActual === 1), padding: '6px 10px' }}>«</button>
+          <button onClick={() => onChange(p => Math.max(1, p - 1))} disabled={paginaActual === 1} style={{ ...navBtn(paginaActual === 1), padding: '6px 12px' }}>‹</button>
+          {pagesArr.map((n, i) =>
+            n === '…' ? (
+              <span key={`e-${i}`} style={{ padding: '0 4px', color: C.textMuted, fontSize: 13 }}>…</span>
+            ) : (
+              <button
+                key={n}
+                onClick={() => onChange(n)}
+                style={{
+                  ...navBtn(false), padding: '6px 11px',
+                  fontWeight: n === paginaActual ? 700 : 500,
+                  background: n === paginaActual ? C.accent : C.surface,
+                  color: n === paginaActual ? '#fff' : C.text,
+                  border: n === paginaActual ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+                }}
+              >
+                {n}
+              </button>
+            )
+          )}
+          <button onClick={() => onChange(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas} style={{ ...navBtn(paginaActual === totalPaginas), padding: '6px 12px' }}>›</button>
+          <button onClick={() => onChange(totalPaginas)} disabled={paginaActual === totalPaginas} style={{ ...navBtn(paginaActual === totalPaginas), padding: '6px 10px' }}>»</button>
+        </div>
       )}
-      <button onClick={() => onChange(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas} style={{ ...navBtn(paginaActual === totalPaginas), padding: '6px 12px' }}>›</button>
-      <button onClick={() => onChange(totalPaginas)} disabled={paginaActual === totalPaginas} style={{ ...navBtn(paginaActual === totalPaginas), padding: '6px 10px' }}>»</button>
     </div>
   );
 }

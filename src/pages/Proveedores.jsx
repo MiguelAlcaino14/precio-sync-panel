@@ -3,7 +3,7 @@ import { C, F, shadow } from '../theme';
 import { apiFetch } from '../api';
 import PageHeader from '../components/PageHeader';
 
-const POR_PAGINA = 10;
+const OPCIONES_PAGINA = [10, 25, 50, 100];
 
 const TEMAS = ['libreria', 'alimentos', 'aseo'];
 
@@ -67,11 +67,12 @@ export default function Proveedores() {
   const [error, setError]               = useState('');
   const [saving, setSaving]             = useState(false);
   const [pagina, setPagina]             = useState(1);
+  const [porPagina, setPorPagina]       = useState(10);
 
-  const totalPaginas   = Math.ceil(proveedores.length / POR_PAGINA) || 1;
+  const totalPaginas   = Math.ceil(proveedores.length / porPagina) || 1;
   const paginaActual   = Math.min(pagina, totalPaginas);
-  const inicio         = (paginaActual - 1) * POR_PAGINA;
-  const proveedoresPag = proveedores.slice(inicio, inicio + POR_PAGINA);
+  const inicio         = (paginaActual - 1) * porPagina;
+  const proveedoresPag = proveedores.slice(inicio, inicio + porPagina);
 
   useEffect(() => { cargar(); }, []);
 
@@ -147,7 +148,7 @@ export default function Proveedores() {
       } else {
         setProveedores(ps => {
           const nuevos = [...ps, data];
-          setPagina(Math.ceil(nuevos.length / POR_PAGINA));
+          setPagina(Math.ceil(nuevos.length / porPagina));
           return nuevos;
         });
       }
@@ -238,7 +239,7 @@ export default function Proveedores() {
         </div>
       )}
 
-      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: shadow.sm }}>
+      <div className="scroll-x" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: shadow.sm }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans }}>
           <thead>
             <tr>
@@ -335,36 +336,61 @@ export default function Proveedores() {
         </table>
       </div>
 
+      <Paginacion
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        onChange={setPagina}
+        porPagina={porPagina}
+        onCambiarPorPagina={n => { setPorPagina(n); setPagina(1); }}
+      />
+    </div>
+  );
+}
+
+function Paginacion({ paginaActual, totalPaginas, onChange, porPagina, onCambiarPorPagina }) {
+  const pagesArr = Array.from({ length: totalPaginas }, (_, i) => i + 1)
+    .filter(n => n === 1 || n === totalPaginas || Math.abs(n - paginaActual) <= 2)
+    .reduce((acc, n, i, arr) => {
+      if (i > 0 && n - arr[i - 1] > 1) acc.push('…');
+      acc.push(n);
+      return acc;
+    }, []);
+  const navBtn = (disabled) => ({
+    ...btnSecondary, padding: '6px 11px',
+    opacity: disabled ? 0.4 : 1, cursor: disabled ? 'default' : 'pointer',
+  });
+  const selectStyle = {
+    padding: '5px 8px', fontSize: 12, fontFamily: F.sans, borderRadius: 6,
+    border: `1px solid ${C.border}`, background: C.surface, color: C.text, cursor: 'pointer',
+  };
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 12, color: C.textSec, fontFamily: F.sans }}>Mostrar</span>
+        <select style={selectStyle} value={porPagina} onChange={e => onCambiarPorPagina(Number(e.target.value))}>
+          {OPCIONES_PAGINA.map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+        <span style={{ fontSize: 12, color: C.textSec, fontFamily: F.sans }}>por página</span>
+      </div>
       {totalPaginas > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 16 }}>
-          <button onClick={() => setPagina(1)} disabled={paginaActual === 1}
-            style={{ ...btnSecondary, padding: '6px 10px', opacity: paginaActual === 1 ? 0.4 : 1, cursor: paginaActual === 1 ? 'default' : 'pointer' }}>«</button>
-          <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={paginaActual === 1}
-            style={{ ...btnSecondary, padding: '6px 12px', opacity: paginaActual === 1 ? 0.4 : 1, cursor: paginaActual === 1 ? 'default' : 'pointer' }}>‹</button>
-          {Array.from({ length: totalPaginas }, (_, i) => i + 1)
-            .filter(n => n === 1 || n === totalPaginas || Math.abs(n - paginaActual) <= 2)
-            .reduce((acc, n, i, arr) => {
-              if (i > 0 && n - arr[i - 1] > 1) acc.push('…');
-              acc.push(n);
-              return acc;
-            }, [])
-            .map((n, i) =>
-              n === '…' ? (
-                <span key={`e-${i}`} style={{ padding: '0 4px', color: C.textMuted, fontSize: 13 }}>…</span>
-              ) : (
-                <button key={n} onClick={() => setPagina(n)} style={{
-                  ...btnSecondary, padding: '6px 11px',
-                  fontWeight: n === paginaActual ? 700 : 500,
-                  background: n === paginaActual ? C.accent : C.surface,
-                  color:      n === paginaActual ? '#fff'    : C.text,
-                  border:     n === paginaActual ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
-                }}>{n}</button>
-              )
-            )}
-          <button onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas}
-            style={{ ...btnSecondary, padding: '6px 12px', opacity: paginaActual === totalPaginas ? 0.4 : 1, cursor: paginaActual === totalPaginas ? 'default' : 'pointer' }}>›</button>
-          <button onClick={() => setPagina(totalPaginas)} disabled={paginaActual === totalPaginas}
-            style={{ ...btnSecondary, padding: '6px 10px', opacity: paginaActual === totalPaginas ? 0.4 : 1, cursor: paginaActual === totalPaginas ? 'default' : 'pointer' }}>»</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => onChange(1)} disabled={paginaActual === 1} style={{ ...navBtn(paginaActual === 1), padding: '6px 10px' }}>«</button>
+          <button onClick={() => onChange(p => Math.max(1, p - 1))} disabled={paginaActual === 1} style={{ ...navBtn(paginaActual === 1), padding: '6px 12px' }}>‹</button>
+          {pagesArr.map((n, i) =>
+            n === '…' ? (
+              <span key={`e-${i}`} style={{ padding: '0 4px', color: C.textMuted, fontSize: 13 }}>…</span>
+            ) : (
+              <button key={n} onClick={() => onChange(n)} style={{
+                ...navBtn(false), padding: '6px 11px',
+                fontWeight: n === paginaActual ? 700 : 500,
+                background: n === paginaActual ? C.accent : C.surface,
+                color:      n === paginaActual ? '#fff'   : C.text,
+                border:     n === paginaActual ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+              }}>{n}</button>
+            )
+          )}
+          <button onClick={() => onChange(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas} style={{ ...navBtn(paginaActual === totalPaginas), padding: '6px 12px' }}>›</button>
+          <button onClick={() => onChange(totalPaginas)} disabled={paginaActual === totalPaginas} style={{ ...navBtn(paginaActual === totalPaginas), padding: '6px 10px' }}>»</button>
         </div>
       )}
     </div>

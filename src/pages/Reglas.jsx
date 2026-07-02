@@ -169,7 +169,7 @@ export default function Reglas() {
         </div>
       </div>
 
-      <div style={{
+      <div className="scroll-x" style={{
         background: C.surface,
         border: `1px solid ${C.border}`,
         borderRadius: 8,
