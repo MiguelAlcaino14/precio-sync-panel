@@ -246,7 +246,7 @@ export default function Proveedores() {
 
             {!editId && (
               <div style={fieldStyle}>
-                <label style={labelStyle}>Slug *</label>
+                <label style={labelStyle}>Apodo *</label>
                 <input style={{ ...inputStyle, fontFamily: F.mono }} value={form.slug} placeholder="Ej: acco-brand" maxLength={60}
                   onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))} />
               </div>
