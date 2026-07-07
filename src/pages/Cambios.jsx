@@ -21,6 +21,7 @@ export default function Cambios() {
   const [pagina, setPagina]                 = useState(1);
   const [porPagina, setPorPagina]           = useState(25);
   const [filtroProv, setFiltroProv]         = useState(null);
+  const [filtroVariacion, setFiltroVariacion] = useState(null); // null | 'sube' | 'baja'
   const [alertCounts, setAlertCounts]       = useState({ pendiente: 0, aprobado: 0 });
   const checkAllRef                         = useRef(null);
 
@@ -50,7 +51,15 @@ export default function Cambios() {
   }, [estado]);
 
   const proveedores  = [...new Set(cambios.map(c => c.producto?.proveedor?.nombre).filter(Boolean))].sort();
-  const cambiosFilt  = filtroProv ? cambios.filter(c => c.producto?.proveedor?.nombre === filtroProv) : cambios;
+  const cambiosFilt = cambios
+    .filter(c => !filtroProv || c.producto?.proveedor?.nombre === filtroProv)
+    .filter(c => {
+      if (!filtroVariacion) return true;
+      const pct = c.costoAnterior ? (c.costoNuevo - c.costoAnterior) / c.costoAnterior * 100 : null;
+      if (filtroVariacion === 'sube') return pct !== null && pct > 0;
+      if (filtroVariacion === 'baja') return pct !== null && pct < 0;
+      return true;
+    });
   const totalPaginas = Math.ceil(cambiosFilt.length / porPagina) || 1;
   const paginaActual = Math.min(pagina, totalPaginas);
   const inicio       = (paginaActual - 1) * porPagina;
@@ -301,6 +310,34 @@ export default function Cambios() {
           })}
         </div>
       )}
+
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginRight: 2 }}>
+          VARIACIÓN
+        </span>
+        {[
+          { value: null,   label: 'Todas' },
+          { value: 'sube', label: '▲ Sube' },
+          { value: 'baja', label: '▼ Baja' },
+        ].map(({ value, label }) => {
+          const activo = filtroVariacion === value;
+          return (
+            <button
+              key={String(value)}
+              onClick={() => { setFiltroVariacion(value); setPagina(1); }}
+              style={{
+                ...btn.outline, padding: '5px 12px', fontSize: 12,
+                fontWeight: activo ? 700 : 500,
+                background: activo ? C.accent : C.surface,
+                color: activo ? '#fff' : C.text,
+                border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
 
       <div className="scroll-x" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: shadow.sm }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans }}>

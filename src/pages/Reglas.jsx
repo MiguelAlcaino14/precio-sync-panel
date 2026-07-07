@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { C, F, shadow, table, btn, form as formStyles } from '../theme';
 import { apiFetch } from '../api';
 
-const vacioForm = { nombre: '', markupPct: '', marca: '', categoria: '', costoMin: '', costoMax: '', prioridad: '0' };
+const vacioForm = { nombre: '', markupPct: '', sku: '', marca: '', categoria: '', costoMin: '', costoMax: '' };
 
 export default function Reglas() {
   const [reglas, setReglas]       = useState([]);
   const [form, setForm]           = useState(vacioForm);
   const [editandoId, setEditandoId] = useState(null);
   const [feedback, setFeedback]   = useState(null); // { ok, texto }
+  const [skuSugerencias, setSkuSugerencias]         = useState([]);
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
   useEffect(() => {
     apiFetch('/reglas').then(r => r.json()).then(data => setReglas(Array.isArray(data) ? data : [])).catch(() => {});
@@ -18,11 +20,11 @@ export default function Reglas() {
     setForm({
       nombre:    r.nombre,
       markupPct: String(r.markupPct),
+      sku:       r.sku       || '',
       marca:     r.marca     || '',
       categoria: r.categoria || '',
       costoMin:  r.costoMin  != null ? String(r.costoMin)  : '',
       costoMax:  r.costoMax  != null ? String(r.costoMax)  : '',
-      prioridad: String(r.prioridad ?? 0),
     });
     setEditandoId(r.id);
     setFeedback(null);
@@ -42,11 +44,11 @@ export default function Reglas() {
     const body = {
       nombre:    form.nombre,
       markupPct: parseFloat(form.markupPct),
+      sku:       form.sku       || null,
       marca:     form.marca     || null,
       categoria: form.categoria || null,
       costoMin:  form.costoMin  ? parseFloat(form.costoMin)  : null,
       costoMax:  form.costoMax  ? parseFloat(form.costoMax)  : null,
-      prioridad: parseInt(form.prioridad) || 0,
     };
     try {
       if (editandoId) {
@@ -82,6 +84,16 @@ export default function Reglas() {
     }
   }
 
+  async function buscarSkus(q) {
+    if (q.length < 2) { setSkuSugerencias([]); return; }
+    try {
+      const res  = await apiFetch(`/reglas/skus?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setSkuSugerencias(Array.isArray(data) ? data : []);
+      setMostrarSugerencias(true);
+    } catch { setSkuSugerencias([]); }
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -89,7 +101,7 @@ export default function Reglas() {
           Reglas de precio de venta
         </h1>
         <p style={{ margin: '5px 0 0', fontSize: 13, color: C.textSec }}>
-          Define cómo se calcula el precio de venta a partir del costo. Se aplica la primera regla que coincida (mayor prioridad primero).
+          Define cómo se calcula el precio de venta a partir del costo. Se aplica la primera regla que coincida. Puede filtrar por proveedor, SKU, marca, unidad o rango de costo.
         </p>
       </div>
 
@@ -131,15 +143,58 @@ export default function Reglas() {
             <input style={{ ...formStyles.input, width: 110 }} type="number" value={form.markupPct} placeholder="47"
               onChange={e => setForm(f => ({ ...f, markupPct: e.target.value }))} />
           </div>
+          <div style={{ ...formStyles.field, position: 'relative' }}>
+            <label style={formStyles.label}>SKU (opcional)</label>
+            <input
+              style={formStyles.input}
+              value={form.sku}
+              placeholder="Buscar por SKU o nombre..."
+              autoComplete="off"
+              onChange={e => {
+                setForm(f => ({ ...f, sku: e.target.value }));
+                buscarSkus(e.target.value);
+              }}
+              onBlur={() => setTimeout(() => setMostrarSugerencias(false), 150)}
+            />
+            {mostrarSugerencias && skuSugerencias.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, zIndex: 100, minWidth: 260,
+                background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
+                boxShadow: shadow.sm, maxHeight: 200, overflowY: 'auto',
+              }}>
+                {skuSugerencias.map(p => (
+                  <div
+                    key={p.sku}
+                    onMouseDown={() => {
+                      setForm(f => ({ ...f, sku: p.sku }));
+                      setMostrarSugerencias(false);
+                    }}
+                    style={{ padding: '7px 12px', cursor: 'pointer', fontSize: 12, borderBottom: `1px solid ${C.border}` }}
+                  >
+                    <span style={{ fontFamily: F.mono, fontWeight: 600 }}>{p.sku}</span>
+                    <span style={{ color: C.textSec, marginLeft: 8 }}>{p.nombre}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div style={formStyles.field}>
             <label style={formStyles.label}>Marca</label>
             <input style={formStyles.input} value={form.marca} placeholder="Ej: Torre"
               onChange={e => setForm(f => ({ ...f, marca: e.target.value }))} />
           </div>
           <div style={formStyles.field}>
-            <label style={formStyles.label}>Categoría</label>
-            <input style={formStyles.input} value={form.categoria} placeholder="Ej: LAVORO"
-              onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} />
+            <label style={formStyles.label}>Unidad</label>
+            <select
+              style={{ ...formStyles.input, cursor: 'pointer' }}
+              value={form.categoria}
+              onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
+            >
+              <option value="">Todas</option>
+              <option value="unidad">Unidad</option>
+              <option value="caja">Caja</option>
+              <option value="pallet">Pallet</option>
+            </select>
           </div>
           <div style={formStyles.field}>
             <label style={formStyles.label}>Desde $</label>
@@ -150,11 +205,6 @@ export default function Reglas() {
             <label style={formStyles.label}>Hasta $</label>
             <input style={{ ...formStyles.input, width: 120 }} type="number" value={form.costoMax} placeholder="∞"
               onChange={e => setForm(f => ({ ...f, costoMax: e.target.value }))} />
-          </div>
-          <div style={formStyles.field}>
-            <label style={formStyles.label}>Prioridad</label>
-            <input style={{ ...formStyles.input, width: 80 }} type="number" value={form.prioridad} placeholder="0"
-              onChange={e => setForm(f => ({ ...f, prioridad: e.target.value }))} />
           </div>
           <div style={{ display: 'flex', gap: 8, alignSelf: 'flex-end' }}>
             <button onClick={guardar} style={btn.solid}>
@@ -181,11 +231,11 @@ export default function Reglas() {
             <tr>
               <th style={table.th}>Nombre</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Margen de ganancia %</th>
+              <th style={table.th}>SKU</th>
               <th style={table.th}>Marca</th>
-              <th style={table.th}>Categoría</th>
+              <th style={table.th}>Unidad</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Desde $</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Hasta $</th>
-              <th style={{ ...table.th, textAlign: 'center' }}>Prioridad</th>
               <th style={table.th}></th>
             </tr>
           </thead>
@@ -214,6 +264,7 @@ export default function Reglas() {
                     {r.markupPct}%
                   </span>
                 </td>
+                <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec }}>{r.sku || '—'}</td>
                 <td style={{ ...table.td, color: C.textSec, fontSize: 12 }}>{r.marca || '—'}</td>
                 <td style={{ ...table.td, color: C.textSec, fontFamily: F.mono, fontSize: 12 }}>{r.categoria || '—'}</td>
                 <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12, color: C.textSec }}>
@@ -222,7 +273,6 @@ export default function Reglas() {
                 <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12, color: C.textSec }}>
                   {r.costoMax ? `$${r.costoMax.toLocaleString('es-CL')}` : '—'}
                 </td>
-                <td style={{ ...table.td, textAlign: 'center', fontFamily: F.mono, fontSize: 12 }}>{r.prioridad}</td>
                 <td style={{ ...table.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <button
                     onClick={() => abrirEditar(r)}

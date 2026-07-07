@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { C, F, shadow, table, btn } from '../theme';
 import { apiFetch } from '../api';
 
@@ -18,7 +18,6 @@ export default function Historial() {
   const [pagina, setPagina]           = useState(1);
   const [porPagina, setPorPagina]     = useState(20);
   const [filtroProv, setFiltroProv]   = useState(null);
-  const pollRef                       = useRef(null);
 
   async function cargar() {
     try {
@@ -33,14 +32,10 @@ export default function Historial() {
     cargar();
   }, []);
 
-  // Polling 15s cuando hay items procesando
   useEffect(() => {
-    const hasProcesando = historial.some(h => h.estado === 'procesando');
-    if (hasProcesando) {
-      pollRef.current = setInterval(cargar, 15_000);
-    }
-    return () => clearInterval(pollRef.current);
-  }, [historial]);
+    const id = setInterval(cargar, 5_000);
+    return () => clearInterval(id);
+  }, []);
 
   const proveedores   = [...new Set(historial.map(h => h.proveedor?.nombre).filter(Boolean))].sort();
   const historialFilt = filtroProv ? historial.filter(h => h.proveedor?.nombre === filtroProv) : historial;
@@ -118,6 +113,7 @@ export default function Historial() {
               <th style={table.th}>Proveedor</th>
               <th style={table.th}>Archivo</th>
               <th style={table.th}>Estado</th>
+              <th style={table.th}>Error</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Total</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Matches</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Sin match</th>
@@ -127,7 +123,7 @@ export default function Historial() {
             {loading && (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 7 }).map((_, j) => (
+                  {Array.from({ length: 8 }).map((_, j) => (
                     <td key={j} style={table.td}>
                       <div style={{ height: 13, background: C.border, borderRadius: 4, animation: 'shimmer 1.4s ease-in-out infinite', width: j === 2 ? '80%' : '60%' }} />
                     </td>
@@ -137,7 +133,7 @@ export default function Historial() {
             )}
             {!loading && historialPag.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
+                <td colSpan={8} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
                   No se han procesado archivos todavía.
                 </td>
               </tr>
@@ -164,6 +160,10 @@ export default function Historial() {
                     <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: badge.bg, color: badge.color }}>
                       {ESTADO_LABEL[h.estado] ?? h.estado}
                     </span>
+                  </td>
+                  <td style={{ ...table.td, fontSize: 11, color: C.red, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      title={h.errores || ''}>
+                    {h.estado === 'error' && h.errores ? h.errores : '—'}
                   </td>
                   <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right' }}>
                     {h.totalProductos ?? '—'}
