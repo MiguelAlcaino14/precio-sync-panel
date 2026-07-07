@@ -130,6 +130,23 @@ export default function Cambios() {
     await aprobar(ids);
   }
 
+  async function limpiarPendientes() {
+    const total = cambios.length;
+    if (!total) return;
+    if (!window.confirm(`¿Eliminar los ${total} cambios pendientes? Úsalo solo para limpiar datos de prueba antes de importar archivos reales.`)) return;
+    setLoading(true);
+    try {
+      await apiFetch('/cambios/limpiar', { method: 'POST' });
+      setCambios([]);
+      setSeleccion({});
+      setAlertCounts(a => ({ ...a, pendiente: 0 }));
+    } catch {
+      // silencioso
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function publicar() {
     if (!selIds.length) return;
     setLoading(true);
@@ -196,37 +213,53 @@ export default function Cambios() {
         </div>
 
         {estado === 'pendiente' && (
-          <div className="actions-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <button onClick={() => window.open('/api/exportar', '_blank')} style={{ ...btn.outline, fontSize: 12 }}>
-              Exportar CSV
-            </button>
-            <button
-              onClick={() => rechazar()}
-              disabled={!selIds.length || loading}
-              style={{
-                ...btn.outline, fontSize: 12,
-                opacity: (!selIds.length || loading) ? 0.45 : 1,
-                cursor: (!selIds.length || loading) ? 'default' : 'pointer',
-                color: selIds.length ? C.red : C.textMuted,
-                border: `1px solid ${selIds.length ? C.red : C.border}`,
-              }}
-            >
-              {loading ? 'Procesando...' : `Rechazar${selIds.length ? ` (${selIds.length})` : ''}`}
-            </button>
-            <button
-              onClick={() => aprobar()}
-              disabled={!selIds.length || loading}
-              style={{ ...btn.solid, fontSize: 12, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer' }}
-            >
-              {loading ? 'Procesando...' : `Aprobar${selIds.length ? ` (${selIds.length})` : ''}`}
-            </button>
-            <button
-              onClick={aprobarTodo}
-              disabled={!cambiosFilt.length || loading}
-              style={{ ...btn.solid, fontSize: 12, background: '#0f172a', opacity: (!cambiosFilt.length || loading) ? 0.45 : 1, cursor: (!cambiosFilt.length || loading) ? 'default' : 'pointer' }}
-            >
-              {loading ? 'Procesando...' : `Aprobar todo (${cambiosFilt.length})`}
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            <div className="actions-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button onClick={() => window.open('/api/exportar', '_blank')} style={{ ...btn.outline, fontSize: 12 }}>
+                Exportar CSV
+              </button>
+              <button
+                onClick={() => rechazar()}
+                disabled={!selIds.length || loading}
+                style={{
+                  ...btn.outline, fontSize: 12,
+                  opacity: (!selIds.length || loading) ? 0.45 : 1,
+                  cursor: (!selIds.length || loading) ? 'default' : 'pointer',
+                  color: selIds.length ? C.red : C.textMuted,
+                  border: `1px solid ${selIds.length ? C.red : C.border}`,
+                }}
+              >
+                {loading ? 'Procesando...' : `Rechazar${selIds.length ? ` (${selIds.length})` : ''}`}
+              </button>
+              <button
+                onClick={() => aprobar()}
+                disabled={!selIds.length || loading}
+                style={{ ...btn.solid, fontSize: 12, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer' }}
+              >
+                {loading ? 'Procesando...' : `Aprobar${selIds.length ? ` (${selIds.length})` : ''}`}
+              </button>
+              <button
+                onClick={aprobarTodo}
+                disabled={!cambiosFilt.length || loading}
+                style={{ ...btn.solid, fontSize: 12, background: '#0f172a', opacity: (!cambiosFilt.length || loading) ? 0.45 : 1, cursor: (!cambiosFilt.length || loading) ? 'default' : 'pointer' }}
+              >
+                {loading ? 'Procesando...' : `Aprobar todo (${cambiosFilt.length})`}
+              </button>
+            </div>
+            {cambios.length > 0 && (
+              <button
+                onClick={limpiarPendientes}
+                disabled={loading}
+                style={{
+                  ...btn.outline, fontSize: 11, padding: '4px 10px',
+                  color: C.red, border: `1px solid ${C.red}`,
+                  opacity: loading ? 0.45 : 1,
+                  cursor: loading ? 'default' : 'pointer',
+                }}
+              >
+                Limpiar datos de prueba
+              </button>
+            )}
           </div>
         )}
         {estado === 'aprobado' && (

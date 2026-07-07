@@ -166,13 +166,19 @@ export default function Reglas() {
                   <div
                     key={p.sku}
                     onMouseDown={() => {
-                      setForm(f => ({ ...f, sku: p.sku }));
+                      setForm(f => ({
+                        ...f,
+                        sku:    p.sku,
+                        nombre: f.nombre || p.nombre,
+                        marca:  f.marca  || p.marca || '',
+                      }));
                       setMostrarSugerencias(false);
                     }}
                     style={{ padding: '7px 12px', cursor: 'pointer', fontSize: 12, borderBottom: `1px solid ${C.border}` }}
                   >
                     <span style={{ fontFamily: F.mono, fontWeight: 600 }}>{p.sku}</span>
                     <span style={{ color: C.textSec, marginLeft: 8 }}>{p.nombre}</span>
+                    {p.marca && <span style={{ color: C.textMuted, marginLeft: 6, fontSize: 11 }}>· {p.marca}</span>}
                   </div>
                 ))}
               </div>
