@@ -23,17 +23,22 @@ export default function Cambios() {
   const [filtroProv, setFiltroProv]         = useState(null);
   const [filtroVariacion, setFiltroVariacion] = useState(null); // null | 'sube' | 'baja'
   const [alertCounts, setAlertCounts]       = useState({ pendiente: 0, aprobado: 0 });
+  const [todosProveedores, setTodosProveedores] = useState([]);
   const checkAllRef                         = useRef(null);
 
   useEffect(() => {
     Promise.all([
       apiFetch('/cambios?estado=pendiente').then(r => r.json()).catch(() => []),
       apiFetch('/cambios?estado=aprobado').then(r => r.json()).catch(() => []),
-    ]).then(([pend, apro]) => {
+      apiFetch('/proveedores').then(r => r.json()).catch(() => []),
+    ]).then(([pend, apro, provs]) => {
       setAlertCounts({
         pendiente: Array.isArray(pend) ? pend.length : 0,
         aprobado:  Array.isArray(apro) ? apro.length : 0,
       });
+      if (Array.isArray(provs)) {
+        setTodosProveedores(provs.map(p => p.nombre).sort());
+      }
     });
   }, []);
 
@@ -50,9 +55,12 @@ export default function Cambios() {
       .catch(() => {});
   }, [estado]);
 
-  const proveedores  = [...new Set(cambios.map(c => c.producto?.proveedor?.nombre).filter(Boolean))].sort();
+  const provNombre   = c => c.archivo?.proveedor?.nombre ?? c.producto?.proveedor?.nombre;
+  // Combina proveedores con cambios en estado actual + todos los registrados
+  const proveedoresConCambios = [...new Set(cambios.map(provNombre).filter(Boolean))];
+  const proveedores = [...new Set([...proveedoresConCambios, ...todosProveedores])].sort();
   const cambiosFilt = cambios
-    .filter(c => !filtroProv || c.producto?.proveedor?.nombre === filtroProv)
+    .filter(c => !filtroProv || provNombre(c) === filtroProv)
     .filter(c => {
       if (!filtroVariacion) return true;
       const pct = c.costoAnterior ? (c.costoNuevo - c.costoAnterior) / c.costoAnterior * 100 : null;
@@ -168,9 +176,18 @@ export default function Cambios() {
     }
   }
 
-  const variacion = c => c.costoAnterior
+  const variacion    = c => c.costoAnterior
     ? ((c.costoNuevo - c.costoAnterior) / c.costoAnterior * 100).toFixed(1)
     : null;
+
+  const presentacion = c => {
+    const cat = c.producto?.categoria;
+    const uc  = c.producto?.unidadesCaja;
+    if (cat === 'pallet') return `Pallet${c.producto?.unidadesPallet ? ` · ${c.producto.unidadesPallet}u` : ''}`;
+    if (cat === 'caja')   return `Caja${uc ? ` · ${uc}u` : ''}`;
+    if (cat === 'unidad') return 'Unidad';
+    return '—';
+  };
 
   return (
     <div>
@@ -301,7 +318,7 @@ export default function Cambios() {
         ))}
       </div>
 
-      {proveedores.length > 1 && (
+      {proveedores.length > 0 && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginRight: 2 }}>
             PROVEEDOR
@@ -309,9 +326,7 @@ export default function Cambios() {
           <button
             onClick={() => { setFiltroProv(null); setPagina(1); }}
             style={{
-              ...btn.outline,
-              padding: '5px 12px',
-              fontSize: 12,
+              ...btn.outline, padding: '5px 12px', fontSize: 12,
               fontWeight: filtroProv === null ? 700 : 500,
               background: filtroProv === null ? C.accent : C.surface,
               color: filtroProv === null ? '#fff' : C.text,
@@ -321,20 +336,22 @@ export default function Cambios() {
             Todos ({cambios.length})
           </button>
           {proveedores.map(p => {
-            const count = cambios.filter(c => c.producto?.proveedor?.nombre === p).length;
+            const count  = cambios.filter(c => provNombre(c) === p).length;
             const activo = filtroProv === p;
+            const sinCambios = count === 0;
             return (
               <button
                 key={p}
-                onClick={() => { setFiltroProv(p); setPagina(1); }}
+                onClick={() => { if (!sinCambios) { setFiltroProv(p); setPagina(1); } }}
+                disabled={sinCambios}
                 style={{
-                  ...btn.outline,
-                  padding: '5px 12px',
-                  fontSize: 12,
+                  ...btn.outline, padding: '5px 12px', fontSize: 12,
                   fontWeight: activo ? 700 : 500,
                   background: activo ? C.accent : C.surface,
-                  color: activo ? '#fff' : C.text,
+                  color: activo ? '#fff' : sinCambios ? C.textMuted : C.text,
                   border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+                  opacity: sinCambios ? 0.5 : 1,
+                  cursor: sinCambios ? 'default' : 'pointer',
                 }}
               >
                 {p} ({count})
@@ -387,6 +404,7 @@ export default function Cambios() {
               </th>
               <th style={table.th}>SKU</th>
               <th style={table.th}>Producto</th>
+              <th style={table.th}>Presentación</th>
               <th style={table.th}>Proveedor</th>
               <th style={table.th}>Marca</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Costo anterior</th>
@@ -398,7 +416,7 @@ export default function Cambios() {
           <tbody>
             {cambiosPag.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
+                <td colSpan={10} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
                   No hay registros en este estado.
                 </td>
               </tr>
@@ -421,14 +439,27 @@ export default function Cambios() {
                       title={c.producto.nombre}>
                     {c.producto.nombre}
                   </td>
+                  <td style={{ ...table.td, fontSize: 12, whiteSpace: 'nowrap' }}>
+                    {presentacion(c) !== '—' ? (
+                      <span style={{
+                        display: 'inline-block', padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                        background: c.producto?.categoria === 'caja' ? '#dbeafe' : c.producto?.categoria === 'pallet' ? '#fef3c7' : '#f1f5f9',
+                        color:      c.producto?.categoria === 'caja' ? '#1d4ed8' : c.producto?.categoria === 'pallet' ? '#d97706' : C.textSec,
+                      }}>
+                        {presentacion(c)}
+                      </span>
+                    ) : <span style={{ color: C.textMuted }}>—</span>}
+                  </td>
                   <td style={{ ...table.td, color: C.textSec, fontSize: 12 }}>
-                    {c.producto.proveedor?.nombre}
+                    {provNombre(c) || '—'}
                   </td>
                   <td style={{ ...table.td, color: C.textSec, fontSize: 12 }}>
                     {c.producto.marca || '—'}
                   </td>
-                  <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', color: C.textSec }}>
-                    {c.costoAnterior ? fmt(c.costoAnterior) : '—'}
+                  <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right' }}>
+                    {c.costoAnterior
+                      ? <span style={{ color: C.textSec, textDecoration: 'line-through', fontSize: 11 }}>{fmt(c.costoAnterior)}</span>
+                      : <span style={{ color: C.textMuted, fontSize: 11 }}>Nuevo</span>}
                   </td>
                   <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontWeight: 600 }}>
                     {fmt(c.costoNuevo)}

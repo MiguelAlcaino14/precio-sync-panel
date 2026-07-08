@@ -16,6 +16,7 @@ const TEMA_BADGE = {
 const CAMPOS_VACIO = {
   colSku: '', colNombre: '', colPrecio: '',
   colMarca: '', colBarras: '', hoja: '',
+  colUnidadesCaja: '', colUnidadesPallet: '',
   precioIncluyeIVA: false, factorIVA: '1.19',
   patronCodigo: '', separadorMiles: '.',
 };
@@ -43,16 +44,18 @@ function inferirTipo(cfg) {
 
 function parseCampos(cfg) {
   return {
-    colSku:           cfg.colSku           || '',
-    colNombre:        cfg.colNombre        || '',
-    colPrecio:        cfg.colPrecio        || '',
-    colMarca:         cfg.colMarca         || '',
-    colBarras:        cfg.colBarras        || '',
-    hoja:             cfg.hoja != null     ? String(cfg.hoja) : '',
-    precioIncluyeIVA: cfg.precioIncluyeIVA ?? false,
-    factorIVA:        cfg.factorIVA != null ? String(cfg.factorIVA) : '1.19',
-    patronCodigo:     cfg.patronCodigo     || '',
-    separadorMiles:   cfg.separadorMiles   || '.',
+    colSku:            cfg.colSku            || '',
+    colNombre:         cfg.colNombre         || '',
+    colPrecio:         cfg.colPrecio         || '',
+    colMarca:          cfg.colMarca          || '',
+    colBarras:         cfg.colBarras         || '',
+    hoja:              cfg.hoja != null      ? String(cfg.hoja) : '',
+    colUnidadesCaja:   cfg.colUnidadesCaja   || '',
+    colUnidadesPallet: cfg.colUnidadesPallet || '',
+    precioIncluyeIVA:  cfg.precioIncluyeIVA  ?? false,
+    factorIVA:         cfg.factorIVA != null  ? String(cfg.factorIVA) : '1.19',
+    patronCodigo:      cfg.patronCodigo      || '',
+    separadorMiles:    cfg.separadorMiles    || '.',
   };
 }
 
@@ -67,9 +70,11 @@ function buildConfig(tipo, c) {
     return r;
   }
   const r = { colSku: c.colSku, colNombre: c.colNombre, colPrecio: c.colPrecio };
-  if (c.colMarca)  r.colMarca  = c.colMarca;
-  if (c.colBarras) r.colBarras = c.colBarras;
-  if (c.hoja)      r.hoja      = isNaN(c.hoja) ? c.hoja : Number(c.hoja);
+  if (c.colMarca)          r.colMarca          = c.colMarca;
+  if (c.colBarras)         r.colBarras         = c.colBarras;
+  if (c.hoja)              r.hoja              = isNaN(c.hoja) ? c.hoja : Number(c.hoja);
+  if (c.colUnidadesCaja)   r.colUnidadesCaja   = c.colUnidadesCaja;
+  if (c.colUnidadesPallet) r.colUnidadesPallet = c.colUnidadesPallet;
   r.precioIncluyeIVA = c.precioIncluyeIVA;
   if (!c.precioIncluyeIVA) r.factorIVA = parseFloat(c.factorIVA) || 1.19;
   return r;
@@ -310,9 +315,11 @@ export default function Proveedores() {
                 { key: 'colSku',    label: 'Columna SKU *',    ph: 'Ej: CODIGO' },
                 { key: 'colNombre', label: 'Columna Nombre *', ph: 'Ej: DESCRIPCION' },
                 { key: 'colPrecio', label: 'Columna Precio *', ph: 'Ej: PRECIO NETO' },
-                { key: 'colMarca',  label: 'Columna Marca',    ph: '(opcional)' },
-                { key: 'colBarras', label: 'Columna Código de barras', ph: '(opcional)' },
-                { key: 'hoja',      label: 'Hoja (nombre o número)', ph: 'Ej: Hoja1 ó 0' },
+                { key: 'colMarca',           label: 'Columna Marca',              ph: '(opcional)' },
+                { key: 'colBarras',          label: 'Columna Código de barras',   ph: '(opcional)' },
+                { key: 'colUnidadesCaja',    label: 'Columna Unidades x Caja',    ph: 'Ej: UPC ó CONTENIDO CAJA' },
+                { key: 'colUnidadesPallet',  label: 'Columna Unidades x Pallet',  ph: 'Ej: CAJAS X PALLET' },
+                { key: 'hoja',               label: 'Hoja (nombre o número)',      ph: 'Ej: Hoja1 ó 0' },
               ].map(({ key, label, ph }) => (
                 <div key={key} style={fieldStyle}>
                   <label style={labelStyle}>{label}</label>

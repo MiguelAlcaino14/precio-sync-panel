@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { C, F, shadow } from '../theme';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { C, F, shadow, fmt, table } from '../theme';
 import { apiFetch } from '../api';
 import PageHeader from '../components/PageHeader';
 
@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [sugerenciaModal, setSugerenciaModal] = useState(null);
   const [stats, setStats]             = useState({ pendientes: null, ultimaSync: null, loadingStats: true });
   const [busqueda, setBusqueda]       = useState('');
+  const [productosModal, setProductosModal] = useState(null); // { proveedor }
   const pollTimers = useRef({});
 
   useEffect(() => {
@@ -131,6 +132,12 @@ export default function Dashboard() {
 
   return (
     <div>
+      {productosModal && (
+        <ProductosModal
+          proveedor={productosModal.proveedor}
+          onClose={() => setProductosModal(null)}
+        />
+      )}
       {sugerenciaModal && (
         <SugerenciaModal
           proveedor={sugerenciaModal.proveedor}
@@ -258,6 +265,7 @@ export default function Dashboard() {
                 uploading={uploading[p.id]}
                 mensaje={mensaje[p.id]}
                 onUpload={file => handleUpload(p.id, file)}
+                onVerProductos={() => setProductosModal({ proveedor: p })}
               />
             ))}
           </div>
@@ -309,7 +317,7 @@ const TEMA_COLOR = {
   alimentos: { bg: '#fef3c7', color: '#d97706' },
 };
 
-function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload }) {
+function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload, onVerProductos }) {
   const tipo = p.config?.tipo === 'pdf' ? 'PDF' : 'Excel';
   const temaStyle = TEMA_COLOR[p.tema] || { bg: C.border, color: C.textSec };
 
@@ -346,10 +354,20 @@ function ProveedorCard({ proveedor: p, uploading, mensaje, onUpload }) {
 
       <div style={{ display: 'flex', gap: 24, marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
         <div>
-          <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: C.text, fontFamily: F.mono }}>
-            {p._count.productos}
-          </p>
-          <p style={{ margin: '2px 0 0', fontSize: 11, color: C.textMuted }}>Productos</p>
+          <button
+            onClick={onVerProductos}
+            disabled={p._count.productos === 0}
+            style={{
+              background: 'none', border: 'none', padding: 0, cursor: p._count.productos > 0 ? 'pointer' : 'default',
+              textAlign: 'left',
+            }}
+            title={p._count.productos > 0 ? 'Ver productos' : 'Sin productos importados'}
+          >
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: p._count.productos > 0 ? C.accent : C.text, fontFamily: F.mono, textDecoration: p._count.productos > 0 ? 'underline' : 'none', textUnderlineOffset: 3 }}>
+              {p._count.productos}
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: C.textMuted }}>Productos</p>
+          </button>
         </div>
         <div>
           <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: C.text, fontFamily: F.mono }}>
@@ -483,6 +501,156 @@ function SugerenciaModal({ proveedor, sugerencia, onAplicar, onIgnorar }) {
             Aplicar parser Excel
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductosModal({ proveedor, onClose }) {
+  const [productos, setProductos] = useState([]);
+  const [total, setTotal]         = useState(0);
+  const [loading, setLoading]     = useState(true);
+  const [q, setQ]                 = useState('');
+  const [page, setPage]           = useState(1);
+  const [inputQ, setInputQ]       = useState('');
+  const LIMIT = 50;
+  const debounceRef = useRef(null);
+
+  const cargar = useCallback((query, pg) => {
+    setLoading(true);
+    const params = new URLSearchParams({ page: pg, limit: LIMIT });
+    if (query) params.set('q', query);
+    apiFetch(`/proveedores/${proveedor.id}/productos?${params}`)
+      .then(r => r.json())
+      .then(data => {
+        setProductos(data.productos || []);
+        setTotal(data.total || 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [proveedor.id]);
+
+  useEffect(() => { cargar(q, page); }, [q, page, cargar]);
+
+  function handleQ(val) {
+    setInputQ(val);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { setQ(val.trim()); setPage(1); }, 300);
+  }
+
+  const totalPaginas = Math.ceil(total / LIMIT) || 1;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 1000, padding: 16,
+    }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{
+        background: C.surface, borderRadius: 10, width: '100%', maxWidth: 780,
+        maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.22)', border: `1px solid ${C.border}`,
+      }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>{proveedor.nombre}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: C.textSec }}>
+              {loading ? '...' : `${total} producto${total !== 1 ? 's' : ''} importados`}
+            </p>
+          </div>
+          <div style={{ position: 'relative' }}>
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: C.textMuted, pointerEvents: 'none' }}>
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input
+              type="text"
+              placeholder="Buscar SKU, nombre, marca..."
+              value={inputQ}
+              onChange={e => handleQ(e.target.value)}
+              style={{
+                padding: '6px 10px 6px 26px', fontSize: 12, fontFamily: F.sans,
+                border: `1px solid ${C.border}`, borderRadius: 6,
+                background: C.surface, color: C.text, outline: 'none', width: 220,
+              }}
+            />
+          </div>
+          <button onClick={onClose} style={{
+            border: 'none', background: 'none', cursor: 'pointer',
+            color: C.textMuted, fontSize: 20, lineHeight: 1, padding: 4,
+          }}>×</button>
+        </div>
+
+        {/* Tabla */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans }}>
+            <thead style={{ position: 'sticky', top: 0, background: C.tableHead || '#f8fafc', zIndex: 1 }}>
+              <tr>
+                <th style={{ ...table.th, textAlign: 'left' }}>SKU</th>
+                <th style={{ ...table.th, textAlign: 'left' }}>Nombre</th>
+                <th style={{ ...table.th, textAlign: 'left' }}>Presentación</th>
+                <th style={{ ...table.th, textAlign: 'left' }}>Marca</th>
+                <th style={{ ...table.th, textAlign: 'right' }}>Costo actual</th>
+                <th style={{ ...table.th, textAlign: 'right' }}>Precio venta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={6} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>Cargando...</td></tr>
+              ) : productos.length === 0 ? (
+                <tr><td colSpan={6} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>Sin resultados</td></tr>
+              ) : productos.map(p => {
+                const cat = p.categoria;
+                const presLabel = cat === 'caja'   ? `Caja${p.unidadesCaja ? ` · ${p.unidadesCaja}u` : ''}`
+                                : cat === 'pallet' ? 'Pallet'
+                                : cat === 'unidad' ? 'Unidad'
+                                : null;
+                return (
+                <tr key={p.id}>
+                  <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec }}>{p.sku}</td>
+                  <td style={{ ...table.td, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={p.nombre}>{p.nombre}</td>
+                  <td style={{ ...table.td, fontSize: 12 }}>
+                    {presLabel ? (
+                      <span style={{
+                        display: 'inline-block', padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                        background: cat === 'caja' ? '#dbeafe' : cat === 'pallet' ? '#fef3c7' : '#f1f5f9',
+                        color:      cat === 'caja' ? '#1d4ed8' : cat === 'pallet' ? '#d97706' : C.textSec,
+                      }}>{presLabel}</span>
+                    ) : <span style={{ color: C.textMuted }}>—</span>}
+                  </td>
+                  <td style={{ ...table.td, fontSize: 12, color: C.textSec }}>{p.marca || '—'}</td>
+                  <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12, color: C.textSec }}>
+                    {p.costoActual != null ? fmt(p.costoActual) : '—'}
+                  </td>
+                  <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12, fontWeight: 600, color: p.precioVenta ? C.text : C.textMuted }}>
+                    {p.precioVenta != null ? fmt(p.precioVenta) : '—'}
+                  </td>
+                </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginación */}
+        {totalPaginas > 1 && (
+          <div style={{ padding: '12px 24px', borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontSize: 12, color: C.textSec, fontFamily: F.sans }}>
+              Página {page} de {totalPaginas}
+            </span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                style={{ cursor: page === 1 ? 'default' : 'pointer', padding: '5px 10px', fontSize: 13, borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontFamily: F.sans, opacity: page === 1 ? 0.4 : 1 }}>
+                ‹
+              </button>
+              <button onClick={() => setPage(p => Math.min(totalPaginas, p + 1))} disabled={page === totalPaginas}
+                style={{ cursor: page === totalPaginas ? 'default' : 'pointer', padding: '5px 10px', fontSize: 13, borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontFamily: F.sans, opacity: page === totalPaginas ? 0.4 : 1 }}>
+                ›
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
