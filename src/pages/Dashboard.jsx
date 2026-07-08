@@ -22,7 +22,8 @@ export default function Dashboard() {
   const [sugerenciaModal, setSugerenciaModal] = useState(null);
   const [stats, setStats]             = useState({ pendientes: null, ultimaSync: null, loadingStats: true });
   const [busqueda, setBusqueda]       = useState('');
-  const [productosModal, setProductosModal] = useState(null); // { proveedor }
+  const [productosModal, setProductosModal] = useState(null);
+  const [syncJS, setSyncJS]               = useState({ loading: false, resultado: null });
   const pollTimers = useRef({});
 
   useEffect(() => {
@@ -130,6 +131,18 @@ export default function Dashboard() {
     }
   }
 
+  async function sincronizarJumpseller() {
+    if (!window.confirm('¿Sincronizar precios actuales desde JumpSeller? Esto actualizará el precio de venta base de todos los productos encontrados.')) return;
+    setSyncJS({ loading: true, resultado: null });
+    try {
+      const res  = await apiFetch('/sync/jumpseller', { method: 'POST' });
+      const data = await res.json();
+      setSyncJS({ loading: false, resultado: data });
+    } catch {
+      setSyncJS({ loading: false, resultado: { error: 'Error de conexión' } });
+    }
+  }
+
   return (
     <div>
       {productosModal && (
@@ -150,6 +163,53 @@ export default function Dashboard() {
         title="Dashboard"
         subtitle="Selecciona un proveedor y sube su lista de precios para iniciar el proceso de sincronización."
       />
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button
+          onClick={sincronizarJumpseller}
+          disabled={syncJS.loading}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '8px 16px', fontSize: 13, fontWeight: 600,
+            borderRadius: 7, border: `1px solid ${C.border}`,
+            background: C.surface, color: C.text,
+            cursor: syncJS.loading ? 'default' : 'pointer',
+            opacity: syncJS.loading ? 0.6 : 1,
+            fontFamily: F.sans,
+          }}
+        >
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+          </svg>
+          {syncJS.loading ? 'Sincronizando...' : 'Sincronizar precios JumpSeller'}
+        </button>
+      </div>
+
+      {syncJS.resultado && (
+        <div style={{
+          marginBottom: 16, padding: '12px 16px', borderRadius: 8,
+          background: syncJS.resultado.error ? '#fef2f2' : '#f0fdf4',
+          border: `1px solid ${syncJS.resultado.error ? C.red : C.green}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          {syncJS.resultado.error ? (
+            <p style={{ margin: 0, fontSize: 13, color: C.red, fontWeight: 500 }}>
+              Error: {syncJS.resultado.error}
+            </p>
+          ) : (
+            <p style={{ margin: 0, fontSize: 13, color: '#166534', fontWeight: 500 }}>
+              ✓ Sincronización completa — {syncJS.resultado.totalJS} productos en JumpSeller ·{' '}
+              {syncJS.resultado.sincSku} por SKU · {syncJS.resultado.sincNombre} por nombre ·{' '}
+              {syncJS.resultado.sinMatch} sin coincidencia
+            </p>
+          )}
+          <button
+            onClick={() => setSyncJS(s => ({ ...s, resultado: null }))}
+            style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 16, color: C.textMuted, lineHeight: 1 }}
+          >×</button>
+        </div>
+      )}
 
       <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
         <StatsCard label="Proveedores activos" value={loading ? null : proveedoresFiltrados.length} loading={loading} />
