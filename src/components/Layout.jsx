@@ -9,7 +9,8 @@ const NAV_TODOS = [
   { to: '/cambios',    label: 'Cambios',          roles: ['admin','operador'] },
   { to: '/historial',  label: 'Historial',        roles: ['admin','operador'] },
   { to: '/proveedores',label: 'Proveedores',      roles: ['admin'] },
-  { to: '/reglas',     label: 'Precio de venta',  roles: ['admin'] },
+  { to: '/reglas',     label: 'Precio de venta',  roles: ['admin', 'operador'] },
+  { to: '/ofertas',    label: 'Ofertas',           roles: ['admin', 'operador'] },
   { to: '/usuarios',   label: 'Usuarios',         roles: ['admin'] },
 ];
 
@@ -42,6 +43,11 @@ const ICONS = {
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
       <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" strokeLinecap="round"/>
       <rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4" strokeLinecap="round"/>
+    </svg>
+  ),
+  '/ofertas': (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path d="M7 7h.01M3 3h7l11 11a2 2 0 010 2.83l-4.17 4.17a2 2 0 01-2.83 0L3 10V3z" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
   '/usuarios': (
