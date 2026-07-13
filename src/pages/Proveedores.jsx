@@ -125,6 +125,8 @@ export default function Proveedores() {
   const [saving, setSaving]             = useState(false);
   const [pagina, setPagina]             = useState(1);
   const [porPagina, setPorPagina]       = useState(10);
+  const [reseteando, setReseteando]     = useState(null); // id o 'todos'
+  const [mensajeReset, setMensajeReset] = useState('');
 
   const totalPaginas   = Math.ceil(proveedores.length / porPagina) || 1;
   const paginaActual   = Math.min(pagina, totalPaginas);
@@ -227,15 +229,63 @@ export default function Proveedores() {
     } catch {}
   }
 
+  async function resetearDrive(idOTodos) {
+    const advertencia = idOTodos === 'todos'
+      ? 'Esto reiniciará el procesamiento total de los archivos de TODOS los proveedores.\n\n¿Confirmas?'
+      : 'Esto reiniciará el procesamiento total de los archivos de este proveedor.\n\n¿Confirmas?';
+    if (!window.confirm(advertencia)) return;
+
+    setReseteando(idOTodos);
+    setMensajeReset('');
+    try {
+      const url = idOTodos === 'todos'
+        ? '/proveedores/reset-drive-todos'
+        : `/proveedores/${idOTodos}/reset-drive`;
+      const res  = await apiFetch(url, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setMensajeReset(`✓ ${data.reseteados} archivo(s) reiniciados. El próximo sync de Drive los reimportará.`);
+      } else {
+        setMensajeReset(`Error: ${data.error || 'No se pudo reiniciar'}`);
+      }
+    } catch {
+      setMensajeReset('Error de conexión al reiniciar.');
+    } finally {
+      setReseteando(null);
+    }
+  }
+
   return (
     <div>
       <PageHeader
         title="Proveedores"
         subtitle="Gestiona los proveedores de precios y su configuración de importación."
         action={!mostrarForm && (
-          <button onClick={abrirCrear} style={btnPrimary}>+ Nuevo proveedor</button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={() => resetearDrive('todos')}
+              disabled={reseteando !== null}
+              style={{ ...btnSecondary, fontSize: 12, padding: '6px 12px', color: C.red, borderColor: C.red }}
+              title="Reinicia el seguimiento de Drive para que el próximo sync reimporte todos los archivos"
+            >
+              {reseteando === 'todos' ? 'Reiniciando…' : '↺ Reiniciar Drive (todos)'}
+            </button>
+            <button onClick={abrirCrear} style={btnPrimary}>+ Nuevo proveedor</button>
+          </div>
         )}
       />
+      {mensajeReset && (
+        <div style={{
+          margin: '0 0 14px', padding: '10px 14px', borderRadius: 6, fontSize: 13, fontFamily: F.sans,
+          background: mensajeReset.startsWith('✓') ? C.greenBg : C.redBg,
+          color:      mensajeReset.startsWith('✓') ? C.green   : C.red,
+          border: `1px solid ${mensajeReset.startsWith('✓') ? C.green : C.red}`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span>{mensajeReset}</span>
+          <button onClick={() => setMensajeReset('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'inherit', lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       {mostrarForm && (
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '20px 22px', marginBottom: 16, boxShadow: shadow.sm }}>
@@ -465,6 +515,16 @@ export default function Proveedores() {
                     <button onClick={() => abrirEditar(p)} style={{ ...btnSecondary, padding: '4px 10px', fontSize: 12, marginRight: 6 }}>
                       Editar
                     </button>
+                    {p.driveFolderId && (
+                      <button
+                        onClick={() => resetearDrive(p.id)}
+                        disabled={reseteando !== null}
+                        title="Reinicia el procesamiento de Drive para este proveedor"
+                        style={{ cursor: 'pointer', border: `1px solid ${C.red}`, padding: '4px 10px', fontSize: 12, fontWeight: 500, borderRadius: 5, background: 'transparent', color: C.red, fontFamily: F.sans, marginRight: 6 }}
+                      >
+                        {reseteando === p.id ? '…' : '↺'}
+                      </button>
+                    )}
                     <button
                       onClick={() => toggleActivo(p)}
                       style={{ cursor: 'pointer', border: `1px solid ${C.border}`, padding: '4px 10px', fontSize: 12, fontWeight: 500, borderRadius: 5, background: 'transparent', color: p.activo ? C.red : C.green, fontFamily: F.sans }}
