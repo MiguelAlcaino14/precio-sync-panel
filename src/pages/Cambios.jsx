@@ -465,7 +465,24 @@ export default function Cambios() {
                       : <span style={{ color: C.textMuted, fontSize: 11 }}>Nuevo</span>}
                   </td>
                   <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontWeight: 600 }}>
-                    {fmt(c.costoNuevo)}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-end' }}>
+                      <span>
+                        {fmt(c.costoNuevo)}
+                        <span style={{ fontSize: 10, fontWeight: 400, color: C.textMuted }}> /u</span>
+                      </span>
+                      {c.producto?.unidadesCaja > 1 && (
+                        <span style={{ fontSize: 11, fontWeight: 500, color: C.textSec }}>
+                          {fmt(Math.round(c.costoNuevo * c.producto.unidadesCaja))}
+                          <span style={{ fontSize: 10, fontWeight: 400, color: C.textMuted }}> /caja ×{c.producto.unidadesCaja}</span>
+                        </span>
+                      )}
+                      {c.producto?.unidadesPallet > 1 && (
+                        <span style={{ fontSize: 11, fontWeight: 500, color: C.textSec }}>
+                          {fmt(Math.round(c.costoNuevo * c.producto.unidadesPallet))}
+                          <span style={{ fontSize: 10, fontWeight: 400, color: C.textMuted }}> /emb ×{c.producto.unidadesPallet}</span>
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ ...table.td, textAlign: 'right' }}>
                     {pct ? (
