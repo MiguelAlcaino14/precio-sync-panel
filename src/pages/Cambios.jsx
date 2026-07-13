@@ -180,12 +180,15 @@ export default function Cambios() {
     ? ((c.costoNuevo - c.costoAnterior) / c.costoAnterior * 100).toFixed(1)
     : null;
 
-  const presentacion = c => {
-    const cat = c.producto?.categoria;
-    const uc  = c.producto?.unidadesCaja;
-    if (cat === 'pallet') return `Pallet${c.producto?.unidadesPallet ? ` · ${c.producto.unidadesPallet}u` : ''}`;
-    if (cat === 'caja')   return `Caja${uc ? ` · ${uc}u` : ''}`;
-    if (cat === 'unidad') return 'Unidad';
+  const formatoVenta = c => {
+    const p  = c.producto;
+    if (!p) return '—';
+    const uc = p.unidadesCaja;
+    const up = p.unidadesPallet;
+    if (uc && up) return `Caja ${uc}u · EMB ${up}u`;
+    if (uc)       return `Caja · ${uc}u`;
+    if (up)       return `EMB · ${up}u`;
+    if (p.categoria === 'unidad') return 'Unidad';
     return '—';
   };
 
@@ -404,7 +407,7 @@ export default function Cambios() {
               </th>
               <th style={table.th}>SKU</th>
               <th style={table.th}>Producto</th>
-              <th style={table.th}>Presentación</th>
+              <th style={table.th}>Formato de venta</th>
               <th style={table.th}>Proveedor</th>
               <th style={table.th}>Marca</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Costo anterior</th>
@@ -440,13 +443,13 @@ export default function Cambios() {
                     {c.producto.nombre}
                   </td>
                   <td style={{ ...table.td, fontSize: 12, whiteSpace: 'nowrap' }}>
-                    {presentacion(c) !== '—' ? (
+                    {formatoVenta(c) !== '—' ? (
                       <span style={{
                         display: 'inline-block', padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600,
                         background: c.producto?.categoria === 'caja' ? '#dbeafe' : c.producto?.categoria === 'pallet' ? '#fef3c7' : '#f1f5f9',
                         color:      c.producto?.categoria === 'caja' ? '#1d4ed8' : c.producto?.categoria === 'pallet' ? '#d97706' : C.textSec,
                       }}>
-                        {presentacion(c)}
+                        {formatoVenta(c)}
                       </span>
                     ) : <span style={{ color: C.textMuted }}>—</span>}
                   </td>
