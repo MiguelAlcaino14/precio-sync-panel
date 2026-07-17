@@ -10,6 +10,7 @@ import Historial from './pages/Historial';
 import Usuarios    from './pages/Usuarios';
 import Proveedores from './pages/Proveedores';
 import Ofertas    from './pages/Ofertas';
+import Mapeo      from './pages/Mapeo';
 
 export default function App() {
   const [autenticado, setAutenticado] = useState(!!getToken());
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="reglas"   element={<Reglas />} />
           <Route path="ofertas"  element={<Ofertas />} />
           {esAdmin && <Route path="usuarios" element={<Usuarios />} />}
+          {esAdmin && <Route path="mapeo"    element={<Mapeo />} />}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
