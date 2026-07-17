@@ -126,7 +126,7 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onCancelar }) {
 
   return (
     <tr>
-      <td colSpan={4} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
+      <td colSpan={5} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
         <div style={{
           padding: '16px 20px',
           background: C.accentLight,
@@ -423,6 +423,7 @@ export default function Mapeo() {
           <thead>
             <tr>
               <th style={table.th}>SKU Proveedor</th>
+              <th style={table.th}>Nombre Producto</th>
               <th style={table.th}>Proveedor</th>
               <th style={{ ...table.th, textAlign: 'center' }}>Estado</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Acciones</th>
@@ -432,7 +433,7 @@ export default function Mapeo() {
             {loading && (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 4 }).map((_, j) => (
+                  {Array.from({ length: 5 }).map((_, j) => (
                     <td key={j} style={table.td}>
                       <div style={{
                         height: 13,
@@ -449,7 +450,7 @@ export default function Mapeo() {
 
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={4} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 48 }}>
+                <td colSpan={5} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 48 }}>
                   No hay items pendientes de revisión.
                 </td>
               </tr>
@@ -466,6 +467,9 @@ export default function Mapeo() {
                 >
                   <td style={{ ...table.td, fontFamily: F.mono, fontSize: 12 }}>
                     {item.skuProveedor}
+                  </td>
+                  <td style={{ ...table.td, color: C.text, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.nombreProducto || '—'}
                   </td>
                   <td style={{ ...table.td, color: C.textSec }}>
                     {item.proveedor?.nombre || item.proveedorNombre || '—'}
