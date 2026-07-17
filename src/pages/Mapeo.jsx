@@ -62,6 +62,7 @@ function StatChip({ label, value, bg, color }) {
 
 function FilaExpandida({ item, onConfirmado, onIgnorado, onCancelar }) {
   const [query, setQuery]           = useState(item.skuProveedor || '');
+  const [nombre, setNombre]         = useState(item.nombreProducto || '');
   const [resultados, setResultados] = useState([]);
   const [buscando, setBuscando]     = useState(false);
   const [seleccionado, setSeleccionado] = useState(null);
@@ -95,9 +96,13 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onCancelar }) {
     setError('');
     setGuardando(true);
     try {
+      const payload = { jumpsellerProductId: seleccionado.productId };
+      if (nombre.trim() && nombre.trim() !== item.nombreProducto) {
+        payload.nombreProducto = nombre.trim();
+      }
       const res = await apiFetch(`/mapeo/${item.id}/confirmar`, {
         method: 'POST',
-        body: JSON.stringify({ jumpsellerProductId: seleccionado.id }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Error al confirmar.'); return; }
@@ -133,8 +138,20 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onCancelar }) {
           borderLeft: `3px solid ${C.accent}`,
         }}>
           <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: C.accent, fontFamily: F.sans }}>
-            Buscar producto en JumpSeller para: <span style={{ fontFamily: F.mono }}>{item.skuProveedor}</span>
+            Revisar mapeo para: <span style={{ fontFamily: F.mono }}>{item.skuProveedor}</span>
           </p>
+
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginBottom: 4 }}>
+              Nombre del producto (proveedor)
+            </label>
+            <input
+              style={{ ...inputStyle, maxWidth: 400 }}
+              value={nombre}
+              placeholder="Nombre del producto…"
+              onChange={e => setNombre(e.target.value)}
+            />
+          </div>
 
           <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
             <div style={{ flex: 1, maxWidth: 400 }}>
@@ -265,7 +282,8 @@ export default function Mapeo() {
   const [pagina, setPagina]             = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [total, setTotal]               = useState(0);
-  const [expandido, setExpandido]       = useState(null); // id del item con fila abierta
+  const [expandido, setExpandido]       = useState(null);
+  const [ignorandoId, setIgnorandoId]   = useState(null);
   const LIMIT = 50;
 
   useEffect(() => {
@@ -323,6 +341,15 @@ export default function Mapeo() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleIgnorarDirecto(id) {
+    setIgnorandoId(id);
+    try {
+      const res = await apiFetch(`/mapeo/${id}/ignorar`, { method: 'POST' });
+      if (res.ok) handleIgnorado(id);
+    } catch {}
+    finally { setIgnorandoId(null); }
   }
 
   function handleConfirmado(id) {
@@ -479,17 +506,34 @@ export default function Mapeo() {
                   </td>
                   <td style={{ ...table.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {item.estado === 'pendiente' && (
-                      <button
-                        onClick={() => toggleExpandido(item.id)}
-                        style={{
-                          ...btn.solid,
-                          padding: '5px 12px',
-                          fontSize: 12,
-                          background: expandido === item.id ? C.accentHov : C.accent,
-                        }}
-                      >
-                        {expandido === item.id ? 'Cancelar' : 'Confirmar'}
-                      </button>
+                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                        <button
+                          onClick={() => toggleExpandido(item.id)}
+                          style={{
+                            ...btn.solid,
+                            padding: '5px 12px',
+                            fontSize: 12,
+                            background: expandido === item.id ? C.accentHov : C.accent,
+                          }}
+                        >
+                          {expandido === item.id ? 'Cancelar' : 'Revisar'}
+                        </button>
+                        <button
+                          onClick={() => handleIgnorarDirecto(item.id)}
+                          disabled={ignorandoId === item.id}
+                          style={{
+                            ...btn.outline,
+                            padding: '5px 12px',
+                            fontSize: 12,
+                            color: C.red,
+                            borderColor: C.red,
+                            opacity: ignorandoId === item.id ? 0.5 : 1,
+                            cursor: ignorandoId === item.id ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {ignorandoId === item.id ? '…' : 'Ignorar'}
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
