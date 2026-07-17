@@ -334,7 +334,7 @@ export default function Mapeo() {
       } else {
         setItems(Array.isArray(data.items) ? data.items : []);
         setTotal(data.total ?? 0);
-        setTotalPaginas(data.totalPaginas ?? 1);
+        setTotalPaginas(data.totalPaginas ?? Math.ceil((data.total ?? 0) / LIMIT));
       }
     } catch {
       setError('Error de conexión.');
