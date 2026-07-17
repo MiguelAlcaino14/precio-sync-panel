@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { C, F, shadow, fmt, table } from '../theme';
 import { apiFetch } from '../api';
 import PageHeader from '../components/PageHeader';
@@ -21,8 +22,10 @@ export default function Dashboard() {
   const [filtroTema, setFiltroTema]   = useState(null);
   const [sugerenciaModal, setSugerenciaModal] = useState(null);
   const [stats, setStats]             = useState({ pendientes: null, ultimaSync: null, loadingStats: true });
+  const [mapeoStats, setMapeoStats]   = useState({ pendientes: null, loading: true });
   const [busqueda, setBusqueda]       = useState('');
   const [productosModal, setProductosModal] = useState(null);
+  const navigate = useNavigate();
   const [syncJS, setSyncJS]               = useState({ loading: false, resultado: null });
   const pollTimers = useRef({});
 
@@ -43,6 +46,11 @@ export default function Dashboard() {
         loadingStats: false,
       });
     });
+
+    apiFetch('/mapeo/stats')
+      .then(r => r.json())
+      .then(d => setMapeoStats({ pendientes: d.pendientes ?? 0, loading: false }))
+      .catch(() => setMapeoStats(s => ({ ...s, loading: false })));
   }, []);
 
   useEffect(() => () => {
@@ -211,13 +219,20 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
         <StatsCard label="Proveedores activos" value={loading ? null : proveedoresFiltrados.length} loading={loading} />
         <StatsCard label="Cambios pendientes"  value={stats.pendientes}                   loading={stats.loadingStats} />
         <StatsCard
           label="Última importación hacia JumpSeller"
           value={stats.ultimaSync ? new Date(stats.ultimaSync).toLocaleDateString('es-CL') : '—'}
           loading={stats.loadingStats}
+        />
+        <StatsCard
+          label="Validación pendiente"
+          value={mapeoStats.pendientes ?? 0}
+          loading={mapeoStats.loading}
+          onClick={() => navigate('/mapeo')}
+          accent
         />
       </div>
 
@@ -355,17 +370,31 @@ export default function Dashboard() {
   );
 }
 
-function StatsCard({ label, value, loading }) {
+function StatsCard({ label, value, loading, onClick, accent }) {
   return (
-    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '16px 20px', boxShadow: shadow.sm }}>
+    <div
+      onClick={onClick}
+      style={{
+        background: accent ? C.accentLight : C.surface,
+        border: `1px solid ${accent ? C.accent + '44' : C.border}`,
+        borderRadius: 8, padding: '16px 20px', boxShadow: shadow.sm,
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'box-shadow 0.15s',
+      }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.boxShadow = shadow.md; }}
+      onMouseLeave={e => { if (onClick) e.currentTarget.style.boxShadow = shadow.sm; }}
+    >
       {loading ? (
         <div style={{ width: 48, height: 24, background: C.border, borderRadius: 4, marginBottom: 6, animation: 'shimmer 1.4s ease-in-out infinite' }} />
       ) : (
-        <p style={{ margin: '0 0 4px', fontSize: 24, fontWeight: 700, color: C.text, fontFamily: F.mono, lineHeight: 1 }}>
+        <p style={{ margin: '0 0 4px', fontSize: 24, fontWeight: 700, color: accent ? C.accent : C.text, fontFamily: F.mono, lineHeight: 1 }}>
           {value ?? '—'}
         </p>
       )}
-      <p style={{ margin: 0, fontSize: 11, color: C.textMuted, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</p>
+      <p style={{ margin: 0, fontSize: 11, color: accent ? C.accent : C.textMuted, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</p>
+      {onClick && (
+        <p style={{ margin: '6px 0 0', fontSize: 11, color: C.accent, fontFamily: F.sans }}>Ver validación →</p>
+      )}
     </div>
   );
 }
