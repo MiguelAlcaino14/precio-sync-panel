@@ -13,9 +13,9 @@ const CATEGORIAS = [
 ];
 
 const ESTADOS = [
+  { value: 'todos',      label: 'Todos' },
   { value: 'pendiente',  label: 'Pendientes' },
   { value: 'ambiguo',   label: 'Ambiguos' },
-  { value: 'todos',      label: 'Todos' },
   { value: 'confirmado', label: 'Confirmados' },
   { value: 'ignorado',   label: 'Ignorados' },
 ];
@@ -417,7 +417,7 @@ export default function Mapeo() {
   const [busqueda, setBusqueda]           = useState('');
   const [proveedorId, setProveedorId]     = useState('');
   const [categoria, setCategoria]         = useState('');
-  const [estado, setEstado]               = useState('pendiente');
+  const [estado, setEstado]               = useState('todos');
 
   // Paginación
   const [pagina, setPagina]             = useState(1);
