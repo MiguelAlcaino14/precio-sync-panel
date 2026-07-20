@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { C, F, shadow, fmt, table } from '../theme';
 import { apiFetch } from '../api';
@@ -23,11 +23,13 @@ export default function Dashboard() {
   const [sugerenciaModal, setSugerenciaModal] = useState(null);
   const [stats, setStats]             = useState({ pendientes: null, ultimaSync: null, loadingStats: true });
   const [mapeoStats, setMapeoStats]   = useState({ pendientes: null, loading: true });
-  const [busqueda, setBusqueda]       = useState('');
+  const [busqueda, setBusqueda]             = useState('');
+  const [busquedaProducto, setBusquedaProducto] = useState('');
   const [productosModal, setProductosModal] = useState(null);
   const navigate = useNavigate();
   const [syncJS, setSyncJS]               = useState({ loading: false, resultado: null });
   const pollTimers = useRef({});
+  const debounceRef = useRef(null);
 
   useEffect(() => {
     apiFetch('/proveedores')
@@ -59,9 +61,20 @@ export default function Dashboard() {
 
   useEffect(() => { setVisibles(POR_PAGINA); }, [filtroTema]);
 
-  const proveedoresFiltrados = proveedores
-    .filter(p => !filtroTema || p.tema === filtroTema)
-    .filter(p => !busqueda.trim() || p.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()));
+  useEffect(() => {
+    const q = busqueda.trim();
+    if (!q) { setBusquedaProducto([]); return; }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      apiFetch(`/proveedores?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(d => { setBusquedaProducto(Array.isArray(d) ? d : []); setVisibles(POR_PAGINA); })
+        .catch(() => setBusquedaProducto([]));
+    }, 300);
+  }, [busqueda]);
+
+  const proveedoresFiltrados = (busqueda.trim() ? busquedaProducto : proveedores)
+    .filter(p => !filtroTema || p.tema === filtroTema);
 
   async function handleUpload(proveedorId, file) {
     if (!file) return;
@@ -287,7 +300,7 @@ export default function Dashboard() {
           </svg>
           <input
             type="text"
-            placeholder="Buscar proveedor..."
+            placeholder="Buscar proveedor o producto..."
             value={busqueda}
             onChange={e => { setBusqueda(e.target.value); setVisibles(POR_PAGINA); }}
             style={{
