@@ -51,7 +51,7 @@ function Badge({ estado }) {
   };
   const s = map[estado] || map.pendiente;
   return (
-    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>
+    <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600, background: s.bg, color: s.color }}>
       {s.label}
     </span>
   );
@@ -59,13 +59,13 @@ function Badge({ estado }) {
 
 function MismatchTag({ item }) {
   if (item.estado === 'ambiguo') {
-    return <span style={{ display: 'inline-block', marginLeft: 4, padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 500, background: '#f3e8ff', color: PURPLE }}>SKU duplicado</span>;
+    return <span style={{ display: 'inline-block', marginLeft: 4, padding: '3px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600, background: '#f3e8ff', color: PURPLE }}>SKU duplicado</span>;
   }
   if (item.estado === 'confirmado' && item.similitud != null) {
-    return <span style={{ display: 'inline-block', marginLeft: 4, padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 500, background: C.yellowBg, color: C.yellow }}>~{Math.round(item.similitud * 100)}% nombre</span>;
+    return <span style={{ display: 'inline-block', marginLeft: 4, padding: '3px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600, background: C.yellowBg, color: C.yellow }}>~{Math.round(item.similitud * 100)}% nombre</span>;
   }
   if (item.estado === 'pendiente') {
-    return <span style={{ display: 'inline-block', marginLeft: 4, padding: '1px 6px', borderRadius: 3, fontSize: 10, fontWeight: 500, background: '#fef2f2', color: C.red }}>Sin coincidencia</span>;
+    return <span style={{ display: 'inline-block', marginLeft: 4, padding: '3px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600, background: '#fef2f2', color: C.red }}>Sin coincidencia</span>;
   }
   return null;
 }
@@ -354,7 +354,7 @@ function FilaComparacion({ skuProveedor, propioId, onAccion, onCerrar }) {
                 <thead>
                   <tr>
                     <th style={table.th}>Proveedor</th>
-                    <th style={table.th}>Nombre Producto</th>
+                    <th style={table.th}>Nombre producto</th>
                     <th style={table.th}>SKU guardado</th>
                     <th style={{ ...table.th, color: C.textMuted }}>SKU original</th>
                     <th style={{ ...table.th, textAlign: 'center' }}>Estado</th>
@@ -557,7 +557,7 @@ export default function Mapeo() {
   return (
     <div>
       <PageHeader
-        title="Validación de Productos"
+        title="Validación de productos"
         subtitle="Revisión y confirmación de productos pendientes de mapeo con JumpSeller."
         action={
           stats && (
@@ -646,8 +646,8 @@ export default function Mapeo() {
                   ref={el => { if (el) el.indeterminate = algunosMarcados; }}
                   onChange={toggleTodos} style={{ cursor: 'pointer' }} />
               </th>
-              <th style={table.th}>SKU Proveedor</th>
-              <th style={table.th}>Nombre Producto</th>
+              <th style={table.th}>SKU proveedor</th>
+              <th style={table.th}>Nombre producto</th>
               <th style={table.th}>Proveedor</th>
               <th style={{ ...table.th, textAlign: 'center' }}>Estado</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Acciones</th>

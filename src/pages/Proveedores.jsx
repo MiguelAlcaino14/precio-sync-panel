@@ -363,12 +363,12 @@ export default function Proveedores() {
             {form.configTipo === 'xlsx' && (<>
               {[
                 { key: 'colSku',    label: 'Columna SKU *',    ph: 'Ej: CODIGO' },
-                { key: 'colNombre', label: 'Columna Nombre *', ph: 'Ej: DESCRIPCION' },
-                { key: 'colPrecio', label: 'Columna Precio *', ph: 'Ej: PRECIO NETO' },
-                { key: 'colMarca',           label: 'Columna Marca',              ph: '(opcional)' },
-                { key: 'colBarras',          label: 'Columna Código de barras',   ph: '(opcional)' },
-                { key: 'colUnidadesCaja',    label: 'Columna Unidades x Caja',    ph: 'Ej: UPC ó CONTENIDO CAJA' },
-                { key: 'colUnidadesPallet',  label: 'Columna Unidades x Pallet',  ph: 'Ej: CAJAS X PALLET' },
+                { key: 'colNombre', label: 'Columna nombre *', ph: 'Ej: DESCRIPCION' },
+                { key: 'colPrecio', label: 'Columna precio *', ph: 'Ej: PRECIO NETO' },
+                { key: 'colMarca',           label: 'Columna marca',              ph: '(opcional)' },
+                { key: 'colBarras',          label: 'Columna código de barras',   ph: '(opcional)' },
+                { key: 'colUnidadesCaja',    label: 'Columna unidades x caja',    ph: 'Ej: UPC ó CONTENIDO CAJA' },
+                { key: 'colUnidadesPallet',  label: 'Columna unidades x pallet',  ph: 'Ej: CAJAS X PALLET' },
                 { key: 'hoja',               label: 'Hoja (nombre o número)',      ph: 'Ej: Hoja1 ó 0' },
               ].map(({ key, label, ph }) => (
                 <div key={key} style={fieldStyle}>

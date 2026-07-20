@@ -12,7 +12,7 @@ const NAV_TODOS = [
   { to: '/reglas',     label: 'Precio de venta',  roles: ['admin', 'operador'] },
   { to: '/ofertas',    label: 'Ofertas',           roles: ['admin', 'operador'] },
   { to: '/usuarios',   label: 'Usuarios',         roles: ['admin'] },
-  { to: '/mapeo',      label: 'Validación de Productos', roles: ['admin'] },
+  { to: '/mapeo',      label: 'Validación de productos', roles: ['admin'] },
 ];
 
 const ICONS = {
