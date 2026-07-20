@@ -22,6 +22,7 @@ export default function Cambios() {
   const [porPagina, setPorPagina]           = useState(25);
   const [filtroProv, setFiltroProv]         = useState(null);
   const [filtroVariacion, setFiltroVariacion] = useState(null); // null | 'sube' | 'baja'
+  const [busqueda, setBusqueda]             = useState('');
   const [alertCounts, setAlertCounts]       = useState({ pendiente: 0, aprobado: 0 });
   const [todosProveedores, setTodosProveedores] = useState([]);
   const checkAllRef                         = useRef(null);
@@ -51,6 +52,7 @@ export default function Cambios() {
         setResultPublicar(null);
         setPagina(1);
         setFiltroProv(null);
+        setBusqueda('');
       })
       .catch(() => {});
   }, [estado]);
@@ -59,6 +61,7 @@ export default function Cambios() {
   // Combina proveedores con cambios en estado actual + todos los registrados
   const proveedoresConCambios = [...new Set(cambios.map(provNombre).filter(Boolean))];
   const proveedores = [...new Set([...proveedoresConCambios, ...todosProveedores])].sort();
+  const q = busqueda.trim().toLowerCase();
   const cambiosFilt = cambios
     .filter(c => !filtroProv || provNombre(c) === filtroProv)
     .filter(c => {
@@ -67,7 +70,11 @@ export default function Cambios() {
       if (filtroVariacion === 'sube') return pct !== null && pct > 0;
       if (filtroVariacion === 'baja') return pct !== null && pct < 0;
       return true;
-    });
+    })
+    .filter(c => !q ||
+      c.producto.sku.toLowerCase().includes(q) ||
+      c.producto.nombre.toLowerCase().includes(q)
+    );
   const totalPaginas = Math.ceil(cambiosFilt.length / porPagina) || 1;
   const paginaActual = Math.min(pagina, totalPaginas);
   const inicio       = (paginaActual - 1) * porPagina;
@@ -319,6 +326,29 @@ export default function Cambios() {
             {e.label}
           </button>
         ))}
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <input
+          type="text"
+          value={busqueda}
+          onChange={e => { setBusqueda(e.target.value); setPagina(1); }}
+          placeholder="Buscar por SKU o nombre..."
+          style={{
+            padding: '7px 12px', fontSize: 13, fontFamily: F.sans,
+            border: `1px solid ${C.border}`, borderRadius: 6,
+            background: C.surface, color: C.text,
+            width: 280, outline: 'none',
+          }}
+        />
+        {busqueda && (
+          <button
+            onClick={() => { setBusqueda(''); setPagina(1); }}
+            style={{ marginLeft: 8, fontSize: 12, color: C.textSec, background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            ✕ Limpiar
+          </button>
+        )}
       </div>
 
       {proveedores.length > 0 && (
