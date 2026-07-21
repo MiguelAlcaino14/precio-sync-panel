@@ -183,29 +183,28 @@ export default function Dashboard() {
       <PageHeader
         title="Dashboard"
         subtitle="Selecciona un proveedor y sube su lista de precios para iniciar el proceso de sincronización."
+        action={
+          <button
+            onClick={sincronizarJumpseller}
+            disabled={syncJS.loading}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '8px 16px', fontSize: 13, fontWeight: 600,
+              borderRadius: 7, border: `1px solid ${C.border}`,
+              background: C.surface, color: C.text,
+              cursor: syncJS.loading ? 'default' : 'pointer',
+              opacity: syncJS.loading ? 0.6 : 1,
+              fontFamily: F.sans,
+            }}
+          >
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            {syncJS.loading ? 'Sincronizando...' : 'Sincronizar precios JumpSeller'}
+          </button>
+        }
       />
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button
-          onClick={sincronizarJumpseller}
-          disabled={syncJS.loading}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '8px 16px', fontSize: 13, fontWeight: 600,
-            borderRadius: 7, border: `1px solid ${C.border}`,
-            background: C.surface, color: C.text,
-            cursor: syncJS.loading ? 'default' : 'pointer',
-            opacity: syncJS.loading ? 0.6 : 1,
-            fontFamily: F.sans,
-          }}
-        >
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
-            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-          </svg>
-          {syncJS.loading ? 'Sincronizando...' : 'Sincronizar precios JumpSeller'}
-        </button>
-      </div>
 
       {syncJS.resultado && (
         <div style={{
@@ -232,7 +231,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
+      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
         <StatsCard label="Proveedores activos" value={loading ? null : proveedoresFiltrados.length} loading={loading} />
         <StatsCard label="Cambios pendientes"  value={stats.pendientes}                   loading={stats.loadingStats} />
         <StatsCard
@@ -312,7 +311,7 @@ export default function Dashboard() {
               border: `1px solid ${C.border}`,
               borderRadius: 6,
               outline: 'none',
-              width: 180,
+              width: 260,
             }}
           />
           {busqueda && (

@@ -79,12 +79,14 @@ function StatChip({ label, value, bg, color }) {
   );
 }
 
+const TEMA_LABEL = { aseo: 'Aseo', libreria: 'Librería', alimentos: 'Alimentos' };
+
 function TemaTag({ tema }) {
   if (!tema) return null;
   const tc = TEMA_COLOR[tema] || {};
   return (
-    <span style={{ display: 'inline-block', marginLeft: 5, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 3, background: tc.bg, color: tc.color }}>
-      {tema}
+    <span style={{ display: 'inline-block', marginLeft: 5, fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 4, background: tc.bg, color: tc.color }}>
+      {TEMA_LABEL[tema] ?? tema}
     </span>
   );
 }
@@ -175,7 +177,7 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
   if (item.estado === 'ignorado') {
     return (
       <tr>
-        <td colSpan={6} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
+        <td colSpan={7} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
           <div style={{ padding: '14px 20px', background: '#f8fafc', borderLeft: `3px solid ${C.textMuted}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans }}>
               Item ignorado. Restaurarlo lo devuelve a pendiente.
@@ -195,7 +197,7 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
 
   return (
     <tr>
-      <td colSpan={6} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
+      <td colSpan={7} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
         <div style={{ padding: '16px 20px', background: C.accentLight, borderLeft: `3px solid ${C.accent}` }}>
           <p style={{ margin: '0 0 14px', fontSize: 12, fontWeight: 600, color: C.accent, fontFamily: F.sans }}>
             Revisar: <span style={{ fontFamily: F.mono }}>{item.skuProveedor}</span>
@@ -331,7 +333,7 @@ function FilaComparacion({ skuProveedor, propioId, onAccion, onCerrar }) {
 
   return (
     <tr>
-      <td colSpan={6} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
+      <td colSpan={7} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
         <div style={{ padding: '16px 20px', background: '#faf5ff', borderLeft: `3px solid ${PURPLE}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
             <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: PURPLE, fontFamily: F.sans }}>
@@ -648,6 +650,7 @@ export default function Mapeo() {
               </th>
               <th style={table.th}>SKU proveedor</th>
               <th style={table.th}>Nombre producto</th>
+              <th style={table.th}>Marca</th>
               <th style={table.th}>Proveedor</th>
               <th style={{ ...table.th, textAlign: 'center' }}>Estado</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Acciones</th>
@@ -655,7 +658,7 @@ export default function Mapeo() {
           </thead>
           <tbody>
             {loading && Array.from({ length: 8 }).map((_, i) => (
-              <tr key={i}>{Array.from({ length: 6 }).map((_, j) => (
+              <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (
                 <td key={j} style={table.td}>
                   <div style={{ height: 13, background: C.border, borderRadius: 4, width: j === 0 ? 16 : j === 1 ? '60%' : '40%', animation: 'shimmer 1.4s ease-in-out infinite' }} />
                 </td>
@@ -663,7 +666,7 @@ export default function Mapeo() {
             ))}
 
             {!loading && !items.length && (
-              <tr><td colSpan={6} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 48 }}>
+              <tr><td colSpan={7} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 48 }}>
                 {busqueda ? `Sin resultados para "${busqueda}"` : 'No hay items en este estado.'}
               </td></tr>
             )}
@@ -680,6 +683,9 @@ export default function Mapeo() {
                   </td>
                   <td style={{ ...table.td, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.nombreProducto || <span style={{ color: C.textMuted }}>—</span>}
+                  </td>
+                  <td style={{ ...table.td, fontSize: 12, color: C.textSec, whiteSpace: 'nowrap' }}>
+                    {item.marca || <span style={{ color: C.textMuted }}>—</span>}
                   </td>
                   <td style={{ ...table.td, color: C.textSec }}>
                     <span>{item.proveedor?.nombre || '—'}</span>

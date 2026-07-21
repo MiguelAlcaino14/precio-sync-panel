@@ -240,8 +240,8 @@ export default function Cambios() {
         </div>
 
         {estado === 'pendiente' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-            <div className="actions-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <button onClick={() => window.open('/api/exportar', '_blank')} style={{ ...btn.outline, fontSize: 12 }}>
                 Exportar CSV
               </button>
@@ -328,69 +328,27 @@ export default function Cambios() {
         ))}
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <input
-          type="text"
-          value={busqueda}
-          onChange={e => { setBusqueda(e.target.value); setPagina(1); }}
-          placeholder="Buscar por SKU o nombre..."
-          style={{
-            padding: '7px 12px', fontSize: 13, fontFamily: F.sans,
-            border: `1px solid ${C.border}`, borderRadius: 6,
-            background: C.surface, color: C.text,
-            width: 280, outline: 'none',
-          }}
-        />
-        {busqueda && (
-          <button
-            onClick={() => { setBusqueda(''); setPagina(1); }}
-            style={{ marginLeft: 8, fontSize: 12, color: C.textSec, background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            ✕ Limpiar
-          </button>
-        )}
-      </div>
 
       {proveedores.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginRight: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans }}>
             PROVEEDOR
           </span>
-          <button
-            onClick={() => { setFiltroProv(null); setPagina(1); }}
+          <select
+            value={filtroProv ?? ''}
+            onChange={e => { setFiltroProv(e.target.value || null); setPagina(1); }}
             style={{
-              ...btn.outline, padding: '5px 12px', fontSize: 12,
-              fontWeight: filtroProv === null ? 700 : 500,
-              background: filtroProv === null ? C.accent : C.surface,
-              color: filtroProv === null ? '#fff' : C.text,
-              border: filtroProv === null ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+              padding: '6px 10px', fontSize: 12, fontFamily: F.sans,
+              border: `1px solid ${C.border}`, borderRadius: 6,
+              background: C.surface, color: C.text, cursor: 'pointer', outline: 'none',
             }}
           >
-            Todos ({cambios.length})
-          </button>
-          {proveedores.map(p => {
-            const count  = cambios.filter(c => provNombre(c) === p).length;
-            const activo = filtroProv === p;
-            const sinCambios = count === 0;
-            return (
-              <button
-                key={p}
-                onClick={() => { if (!sinCambios) { setFiltroProv(p); setPagina(1); } }}
-                disabled={sinCambios}
-                style={{
-                  ...btn.outline, padding: '5px 12px', fontSize: 12,
-                  fontWeight: activo ? 700 : 500,
-                  background: activo ? C.accent : C.surface,
-                  color: activo ? '#fff' : sinCambios ? C.textMuted : C.text,
-                  border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
-                  opacity: sinCambios ? 0.5 : 1,
-                  cursor: sinCambios ? 'default' : 'pointer',
-                }}
-              >
-                {p} ({count})
-              </button>
-            );
-          })}
+            <option value="">Todos ({cambios.length})</option>
+            {proveedores.map(p => {
+              const count = cambios.filter(c => provNombre(c) === p).length;
+              return <option key={p} value={p}>{p} ({count})</option>;
+            })}
+          </select>
         </div>
       )}
 
@@ -420,6 +378,34 @@ export default function Cambios() {
             </button>
           );
         })}
+        <div style={{ position: 'relative', marginLeft: 'auto' }}>
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+            style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: C.textMuted, pointerEvents: 'none' }}>
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input
+            type="text"
+            value={busqueda}
+            onChange={e => { setBusqueda(e.target.value); setPagina(1); }}
+            placeholder="Buscar por SKU o nombre..."
+            style={{
+              padding: '6px 30px 6px 28px', fontSize: 13, fontFamily: F.sans,
+              border: `1px solid ${C.border}`, borderRadius: 6,
+              background: C.surface, color: C.text,
+              width: 260, outline: 'none',
+            }}
+          />
+          {busqueda && (
+            <button
+              onClick={() => { setBusqueda(''); setPagina(1); }}
+              style={{
+                position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)',
+                border: 'none', background: 'none', cursor: 'pointer',
+                color: C.textMuted, fontSize: 15, lineHeight: 1, padding: 2,
+              }}
+            >×</button>
+          )}
+        </div>
       </div>
 
       <div className="scroll-x" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: shadow.sm }}>
