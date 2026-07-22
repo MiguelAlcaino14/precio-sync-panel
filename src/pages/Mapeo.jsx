@@ -493,7 +493,7 @@ function FilaComparacion({ skuProveedor, propioId, onAccion, onCerrar }) {
                       <td style={{ ...table.td, textAlign: 'center' }}><Badge estado={it.estado} /></td>
                       <td style={{ ...table.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: 5 }}>
-                          {['pendiente', 'ambiguo'].includes(it.estado) && (
+                          {['pendiente', 'ambiguo', 'confirmado'].includes(it.estado) && (
                             <button onClick={() => accion(it.id, 'ignorar')} disabled={accionId === it.id}
                               style={{ ...btn.outline, padding: '4px 10px', fontSize: 11, color: C.red, borderColor: C.red, opacity: accionId === it.id ? 0.5 : 1, cursor: accionId === it.id ? 'default' : 'pointer' }}>
                               {accionId === it.id ? '…' : 'Ignorar'}
