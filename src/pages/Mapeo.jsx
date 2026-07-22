@@ -820,7 +820,7 @@ export default function Mapeo() {
                         style={{ ...btn.solid, padding: '5px 12px', fontSize: 12, background: expandido === item.id ? C.accentHov : C.accent }}>
                         {expandido === item.id ? 'Cancelar' : 'Revisar'}
                       </button>
-                      {item.estado === 'pendiente' && (
+                      {['pendiente', 'ambiguo', 'confirmado'].includes(item.estado) && (
                         <button onClick={() => handleIgnorarDirecto(item.id)} disabled={ignorandoId === item.id}
                           style={{ ...btn.outline, padding: '5px 12px', fontSize: 12, color: C.red, borderColor: C.red, opacity: ignorandoId === item.id ? 0.5 : 1, cursor: ignorandoId === item.id ? 'not-allowed' : 'pointer' }}>
                           {ignorandoId === item.id ? '…' : 'Ignorar'}
