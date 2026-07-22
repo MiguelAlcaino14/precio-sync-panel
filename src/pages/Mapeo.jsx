@@ -336,8 +336,7 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
           </div>
 
           {/* ── Vínculos JumpSeller extra ── */}
-          {item.estado === 'confirmado' && (
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}44` }}>
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}44` }}>
               <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans }}>
                 Vínculos JumpSeller adicionales
               </p>
@@ -396,7 +395,6 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
                 </div>
               )}
             </div>
-          )}
         </div>
       </td>
     </tr>
