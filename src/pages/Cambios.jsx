@@ -428,14 +428,15 @@ export default function Cambios() {
               <th style={table.th}>Marca</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Costo anterior</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Costo nuevo</th>
-              <th style={{ ...table.th, textAlign: 'right' }}>Variación</th>
-              <th style={{ ...table.th, textAlign: 'right' }}>Precio de venta</th>
+              <th style={{ ...table.th, textAlign: 'right' }}>Variación costo</th>
+              <th style={{ ...table.th, textAlign: 'right' }}>Precio JumpSeller</th>
+              <th style={{ ...table.th, textAlign: 'right' }}>Precio sugerido</th>
             </tr>
           </thead>
           <tbody>
             {cambiosPag.length === 0 && (
               <tr>
-                <td colSpan={10} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
+                <td colSpan={11} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
                   No hay registros en este estado.
                 </td>
               </tr>
@@ -515,6 +516,36 @@ export default function Cambios() {
                       <span style={{ color: C.textMuted }}>—</span>
                     )}
                   </td>
+                  {/* Precio JumpSeller actual */}
+                  <td style={{ ...table.td, textAlign: 'right' }}>
+                    {(() => {
+                      const jsPrice = c.producto?.precioVenta?.precio ?? c.precioActual ?? null;
+                      const sugerido = preciosEdit[c.id] !== undefined ? Number(preciosEdit[c.id]) : (c.precioSugerido ?? null);
+                      const varPct = jsPrice && sugerido ? ((sugerido - jsPrice) / jsPrice * 100).toFixed(1) : null;
+                      const varSube = varPct > 0;
+                      return (
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                          {jsPrice != null ? (
+                            <span style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 600, color: C.text }}>{fmt(jsPrice)}</span>
+                          ) : (
+                            <span style={{ fontSize: 12, color: C.textMuted }}>—</span>
+                          )}
+                          {varPct !== null && (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 2,
+                              fontSize: 11, fontWeight: 600, fontFamily: F.mono,
+                              padding: '1px 6px', borderRadius: 4,
+                              background: varSube ? C.redBg : C.greenBg,
+                              color: varSube ? C.red : C.green,
+                            }}>
+                              {varSube ? '▲' : '▼'} {Math.abs(varPct)}%
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  {/* Precio sugerido editable */}
                   <td style={{ ...table.td, textAlign: 'right' }}>
                     {estado === 'pendiente' ? (
                       <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
@@ -533,11 +564,6 @@ export default function Cambios() {
                         {precioBajoCosto && (
                           <span style={{ fontSize: 10, color: C.red, fontWeight: 600, whiteSpace: 'nowrap' }}>
                             ⚠ Bajo el costo
-                          </span>
-                        )}
-                        {c.precioActual && (
-                          <span style={{ fontSize: 10, color: C.textMuted, whiteSpace: 'nowrap' }}>
-                            Publicado: {fmt(c.precioActual)}
                           </span>
                         )}
                       </div>
