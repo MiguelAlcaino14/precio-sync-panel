@@ -35,7 +35,7 @@ const FORM_VACIO = {
 function inferirTipo(cfg) {
   if (!cfg || typeof cfg !== 'object') return 'ia';
   const t = cfg.tipo;
-  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai'].includes(t)) return t;
+  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel'].includes(t)) return t;
   if (t === 'pdf') return 'pdf';
   if (t === 'ia')  return 'ia';
   if (cfg.colSku || t === 'xlsx') return 'xlsx';
@@ -61,7 +61,7 @@ function parseCampos(cfg) {
 
 function buildConfig(tipo, c) {
   if (tipo === 'ia') return { tipo: 'ia' };
-  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai'].includes(tipo)) return { tipo };
+  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel'].includes(tipo)) return { tipo };
   if (tipo === 'pdf') {
     const r = { tipo: 'pdf', precioIncluyeIVA: c.precioIncluyeIVA };
     if (c.patronCodigo)  r.patronCodigo  = c.patronCodigo;
@@ -337,6 +337,10 @@ export default function Proveedores() {
                 <option value="ia">IA (automático — Excel y PDF)</option>
                 <option value="xlsx">Excel (columnas manuales)</option>
                 <option value="pdf">PDF (patrón manual)</option>
+                <option value="demarka">Demarka (parser especial)</option>
+                <option value="cambiaso">Cambiaso (parser especial)</option>
+                <option value="winnex">Winnex (parser especial)</option>
+                <option value="rommel">Rommel (parser especial)</option>
                 <option value="acco-brand">Parser especial: ACCO Brand</option>
                 <option value="carlos-gardy">Parser especial: Carlos Gardy</option>
                 <option value="engatel">Parser especial: ENGATEL</option>
@@ -352,7 +356,7 @@ export default function Proveedores() {
               </div>
             )}
 
-            {['acco-brand','carlos-gardy','engatel','scai'].includes(form.configTipo) && (
+            {['acco-brand','carlos-gardy','engatel','scai','demarka','cambiaso','winnex','rommel'].includes(form.configTipo) && (
               <div style={{ gridColumn: '1 / -1' }}>
                 <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans, background: '#eff6ff', padding: '8px 12px', borderRadius: 6, border: '1px solid #bfdbfe' }}>
                   Parser especial sin configuración adicional requerida.
