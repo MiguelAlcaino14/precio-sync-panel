@@ -64,6 +64,7 @@ export default function Ofertas() {
   const [skuOpts,      setSkuOpts]      = useState([]);
   const [mostrarSkus,  setMostrarSkus]  = useState(false);
   const [cargando,     setCargando]     = useState(false);
+  const [publicando,   setPublicando]   = useState({});
 
   useEffect(() => {
     cargar();
@@ -165,6 +166,39 @@ export default function Ofertas() {
       const data = await res.json();
       if (res.ok) setOfertas(prev => prev.map(x => x.id === o.id ? { ...x, activa: data.activa } : x));
     } catch {}
+  }
+
+  async function publicarOferta(o) {
+    setPublicando(p => ({ ...p, [o.id]: true }));
+    setFeedback(null);
+    try {
+      const res  = await apiFetch(`/ofertas/${o.id}/publicar`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { setFeedback({ ok: false, texto: data.error || 'Error al publicar.' }); return; }
+      setOfertas(prev => prev.map(x => x.id === o.id ? { ...x, publicada: true } : x));
+      setFeedback({ ok: true, texto: `Oferta publicada — ${data.aplicados} productos actualizados en JumpSeller.${data.errores?.length ? ` ${data.errores.length} errores.` : ''}` });
+    } catch {
+      setFeedback({ ok: false, texto: 'Error de conexión al publicar.' });
+    } finally {
+      setPublicando(p => ({ ...p, [o.id]: false }));
+    }
+  }
+
+  async function revertirOferta(o) {
+    if (!window.confirm(`¿Revertir la oferta "${o.nombre}" en JumpSeller? Se restaurarán los precios originales.`)) return;
+    setPublicando(p => ({ ...p, [o.id]: true }));
+    setFeedback(null);
+    try {
+      const res  = await apiFetch(`/ofertas/${o.id}/revertir`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { setFeedback({ ok: false, texto: data.error || 'Error al revertir.' }); return; }
+      setOfertas(prev => prev.map(x => x.id === o.id ? { ...x, publicada: false } : x));
+      setFeedback({ ok: true, texto: `Oferta revertida — ${data.revertidos} productos restaurados en JumpSeller.` });
+    } catch {
+      setFeedback({ ok: false, texto: 'Error de conexión al revertir.' });
+    } finally {
+      setPublicando(p => ({ ...p, [o.id]: false }));
+    }
   }
 
   async function eliminar(o) {
@@ -338,6 +372,7 @@ export default function Ofertas() {
               <th style={table.th}>Desde</th>
               <th style={table.th}>Hasta</th>
               <th style={{ ...table.th, textAlign: 'center' }}>Estado</th>
+              <th style={{ ...table.th, textAlign: 'center' }}>JumpSeller</th>
               <th style={table.th}></th>
             </tr>
           </thead>
@@ -370,6 +405,26 @@ export default function Ofertas() {
                   }}>
                     {o.activa ? 'Activa' : 'Inactiva'}
                   </button>
+                </td>
+                <td style={{ ...table.td, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                  {publicando[o.id] ? (
+                    <span style={{ fontSize: 11, color: C.textMuted }}>Procesando...</span>
+                  ) : o.publicada ? (
+                    <button onClick={() => revertirOferta(o)} style={{
+                      cursor: 'pointer', border: `1px solid ${C.red}`, padding: '4px 10px',
+                      fontSize: 11, fontWeight: 600, borderRadius: 5, background: '#fee2e2',
+                      color: C.red, fontFamily: F.sans,
+                    }}>↩ Revertir</button>
+                  ) : (
+                    <button onClick={() => publicarOferta(o)} disabled={!o.activa} style={{
+                      cursor: o.activa ? 'pointer' : 'not-allowed',
+                      border: `1px solid ${o.activa ? '#16a34a' : C.border}`,
+                      padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 5,
+                      background: o.activa ? '#dcfce7' : C.border,
+                      color: o.activa ? '#16a34a' : C.textMuted, fontFamily: F.sans,
+                      opacity: o.activa ? 1 : 0.5,
+                    }}>↑ Publicar en JS</button>
+                  )}
                 </td>
                 <td style={{ ...table.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <button onClick={() => abrirEditar(o)} style={{
