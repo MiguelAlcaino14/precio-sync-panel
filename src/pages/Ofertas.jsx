@@ -56,6 +56,7 @@ function fmtFecha(f) {
 export default function Ofertas() {
   const [ofertas,      setOfertas]      = useState([]);
   const [proveedores,  setProveedores]  = useState([]);
+  const [marcasDisp,   setMarcasDisp]   = useState([]);
   const [form,         setForm]         = useState(vacio);
   const [editandoId,   setEditandoId]   = useState(null);
   const [feedback,     setFeedback]     = useState(null);
@@ -69,6 +70,10 @@ export default function Ofertas() {
     apiFetch('/proveedores')
       .then(r => r.json())
       .then(d => setProveedores(Array.isArray(d) ? d : []))
+      .catch(() => {});
+    apiFetch('/ofertas/marcas')
+      .then(r => r.json())
+      .then(d => setMarcasDisp(Array.isArray(d) ? d : []))
       .catch(() => {});
   }, []);
 
@@ -237,8 +242,16 @@ export default function Ofertas() {
           {form.tipo === 'marca' && (
             <div style={formStyles.field}>
               <label style={formStyles.label}>Marca</label>
-              <input style={{ ...formStyles.input, width: 160 }} value={form.marca} placeholder="Ej: Torre"
-                onChange={e => setForm(f => ({ ...f, marca: e.target.value }))} />
+              {marcasDisp.length > 0 ? (
+                <select style={{ ...formStyles.input, cursor: 'pointer', width: 180 }} value={form.marca}
+                  onChange={e => setForm(f => ({ ...f, marca: e.target.value }))}>
+                  <option value="">Seleccionar...</option>
+                  {marcasDisp.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              ) : (
+                <input style={{ ...formStyles.input, width: 160 }} value={form.marca} placeholder="Ej: Torre"
+                  onChange={e => setForm(f => ({ ...f, marca: e.target.value }))} />
+              )}
             </div>
           )}
 

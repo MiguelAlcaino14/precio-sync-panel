@@ -304,9 +304,12 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
                   onMouseEnter={e => { if (seleccionado?.productId !== r.productId) e.currentTarget.style.background = C.surfaceHover; }}
                   onMouseLeave={e => { if (seleccionado?.productId !== r.productId) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <p style={{ margin: 0, flex: 1, fontSize: 13, fontWeight: seleccionado?.productId === r.productId ? 600 : 400, color: C.text, fontFamily: F.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {r.nombre || '(sin nombre)'}
-                  </p>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: seleccionado?.productId === r.productId ? 600 : 400, color: C.text, fontFamily: F.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {r.nombre || '(sin nombre)'}
+                    </p>
+                    {r.sku && <p style={{ margin: '1px 0 0', fontSize: 11, color: C.textMuted, fontFamily: F.mono }}>{r.sku}</p>}
+                  </div>
                   {seleccionado?.productId === r.productId && (
                     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke={C.accent} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                   )}
@@ -377,7 +380,10 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}
                           onMouseEnter={e => { if (selLink?.productId !== r.productId) e.currentTarget.style.background = C.surfaceHover; }}
                           onMouseLeave={e => { if (selLink?.productId !== r.productId) e.currentTarget.style.background = 'transparent'; }}>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: selLink?.productId === r.productId ? 600 : 400 }}>{r.nombre}</span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: selLink?.productId === r.productId ? 600 : 400 }}>{r.nombre}</div>
+                            {r.sku && <div style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono }}>{r.sku}</div>}
+                          </div>
                           <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono, flexShrink: 0 }}>#{r.productId}</span>
                         </div>
                       ))}
