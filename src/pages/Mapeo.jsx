@@ -103,6 +103,52 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
   const [error, setError]               = useState('');
   const debounceRef = useRef(null);
 
+  // Vínculos extra
+  const [links, setLinks]               = useState(item.links ?? []);
+  const [mostrarAddLink, setMostrarAddLink] = useState(false);
+  const [queryLink, setQueryLink]       = useState('');
+  const [resultadosLink, setResultadosLink] = useState([]);
+  const [buscandoLink, setBuscandoLink] = useState(false);
+  const [selLink, setSelLink]           = useState(null);
+  const [guardandoLink, setGuardandoLink] = useState(false);
+  const [errorLink, setErrorLink]       = useState('');
+  const debounceLink = useRef(null);
+
+  useEffect(() => {
+    if (!queryLink.trim()) { setResultadosLink([]); return; }
+    clearTimeout(debounceLink.current);
+    debounceLink.current = setTimeout(async () => {
+      setBuscandoLink(true);
+      try {
+        const res = await apiFetch(`/mapeo/buscar-jumpseller?q=${encodeURIComponent(queryLink)}`);
+        if (res.ok) setResultadosLink((await res.json()) || []);
+      } catch {} finally { setBuscandoLink(false); }
+    }, 400);
+  }, [queryLink]);
+
+  async function agregarLink() {
+    if (!selLink) { setErrorLink('Selecciona un producto.'); return; }
+    setErrorLink(''); setGuardandoLink(true);
+    try {
+      const res  = await apiFetch(`/mapeo/${item.id}/links`, {
+        method: 'POST',
+        body: JSON.stringify({ jumpsellerProductId: selLink.productId, jumpsellerNombre: selLink.nombre }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setErrorLink(data.error || 'Error al agregar.'); return; }
+      setLinks(prev => [...prev, data]);
+      setMostrarAddLink(false); setQueryLink(''); setResultadosLink([]); setSelLink(null);
+    } catch { setErrorLink('Error de conexión.'); }
+    finally { setGuardandoLink(false); }
+  }
+
+  async function eliminarLink(linkId) {
+    try {
+      const res = await apiFetch(`/mapeo/${item.id}/links/${linkId}`, { method: 'DELETE' });
+      if (res.ok) setLinks(prev => prev.filter(l => l.id !== linkId));
+    } catch {}
+  }
+
   const buscarJS = useCallback((q) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!q.trim()) { setResultados([]); return; }
@@ -288,6 +334,69 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
               Cancelar
             </button>
           </div>
+
+          {/* ── Vínculos JumpSeller extra ── */}
+          {item.estado === 'confirmado' && (
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}44` }}>
+              <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans }}>
+                Vínculos JumpSeller adicionales
+              </p>
+
+              {links.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                  {links.map(l => (
+                    <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                      <span style={{ flex: 1, fontSize: 12, color: C.text, fontFamily: F.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {l.jumpsellerNombre || `ID ${l.jumpsellerProductId}`}
+                      </span>
+                      <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono }}>#{l.jumpsellerProductId}</span>
+                      <button onClick={() => eliminarLink(l.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: C.red, fontSize: 16, lineHeight: 1, padding: '0 2px' }} title="Eliminar vínculo">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!mostrarAddLink ? (
+                <button onClick={() => setMostrarAddLink(true)} style={{ ...btn.outline, padding: '6px 14px', fontSize: 12, color: C.accent, borderColor: C.accent }}>
+                  + Agregar vínculo
+                </button>
+              ) : (
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, padding: '12px 14px' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans }}>Buscar producto en JumpSeller</p>
+                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <input style={{ ...inputStyle, paddingRight: 30 }} value={queryLink} placeholder="Nombre o SKU en JumpSeller…"
+                      onChange={e => { setQueryLink(e.target.value); setSelLink(null); }} autoFocus />
+                    {buscandoLink && <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: C.textMuted }}>…</span>}
+                  </div>
+                  {resultadosLink.length > 0 && (
+                    <div style={{ maxHeight: 180, overflowY: 'auto', border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, marginBottom: 10 }}>
+                      {resultadosLink.map(r => (
+                        <div key={r.productId} onClick={() => setSelLink(prev => prev?.productId === r.productId ? null : r)}
+                          style={{ padding: '7px 12px', borderBottom: `1px solid ${C.border}`, cursor: 'pointer', fontSize: 12,
+                            background: selLink?.productId === r.productId ? C.rowSelected : 'transparent',
+                            borderLeft: selLink?.productId === r.productId ? `3px solid ${C.accent}` : '3px solid transparent',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}
+                          onMouseEnter={e => { if (selLink?.productId !== r.productId) e.currentTarget.style.background = C.surfaceHover; }}
+                          onMouseLeave={e => { if (selLink?.productId !== r.productId) e.currentTarget.style.background = 'transparent'; }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: selLink?.productId === r.productId ? 600 : 400 }}>{r.nombre}</span>
+                          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono, flexShrink: 0 }}>#{r.productId}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {errorLink && <p style={{ margin: '0 0 8px', fontSize: 12, color: C.red, fontWeight: 500 }}>{errorLink}</p>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={agregarLink} disabled={guardandoLink || !selLink}
+                      style={{ ...btn.solid, padding: '6px 14px', fontSize: 12, opacity: (guardandoLink || !selLink) ? 0.5 : 1, cursor: (guardandoLink || !selLink) ? 'default' : 'pointer' }}>
+                      {guardandoLink ? 'Guardando…' : 'Agregar'}
+                    </button>
+                    <button onClick={() => { setMostrarAddLink(false); setQueryLink(''); setResultadosLink([]); setSelLink(null); setErrorLink(''); }}
+                      style={{ ...btn.outline, padding: '6px 12px', fontSize: 12 }}>Cancelar</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </td>
     </tr>
