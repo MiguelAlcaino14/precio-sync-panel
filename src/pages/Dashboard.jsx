@@ -220,8 +220,8 @@ export default function Dashboard() {
           ) : (
             <p style={{ margin: 0, fontSize: 13, color: '#166534', fontWeight: 500 }}>
               ✓ Sincronización completa — {syncJS.resultado.totalJS} productos en JumpSeller ·{' '}
-              {syncJS.resultado.sincSku} por SKU · {syncJS.resultado.sincNombre} por nombre ·{' '}
-              {syncJS.resultado.sinMatch} sin coincidencia
+              {syncJS.resultado.sincronizados} sincronizados ·{' '}
+              {syncJS.resultado.sinMatch} sin mapeo confirmado
             </p>
           )}
           <button
