@@ -31,6 +31,14 @@ export default function Dashboard() {
   const pollTimers = useRef({});
   const debounceRef = useRef(null);
 
+  const [vista, setVista]                       = useState('cuadro');
+  const [proveedorIdLista, setProveedorIdLista] = useState('');
+  const [productos, setProductos]               = useState([]);
+  const [loadingProductos, setLoadingProductos] = useState(false);
+  const [totalProductos, setTotalProductos]     = useState(0);
+  const [totalPaginasLista, setTotalPaginasLista] = useState(1);
+  const [paginaLista, setPaginaLista]           = useState(1);
+
   useEffect(() => {
     apiFetch('/proveedores')
       .then(r => r.json())
@@ -62,6 +70,7 @@ export default function Dashboard() {
   useEffect(() => { setVisibles(POR_PAGINA); }, [filtroTema]);
 
   useEffect(() => {
+    if (vista === 'lista') return;
     const q = busqueda.trim();
     if (!q) { setBusquedaProducto([]); return; }
     clearTimeout(debounceRef.current);
@@ -71,7 +80,14 @@ export default function Dashboard() {
         .then(d => { setBusquedaProducto(Array.isArray(d) ? d : []); setVisibles(POR_PAGINA); })
         .catch(() => setBusquedaProducto([]));
     }, 300);
-  }, [busqueda]);
+  }, [busqueda, vista]);
+
+  useEffect(() => { setPaginaLista(1); }, [busqueda, filtroTema, proveedorIdLista, vista]);
+
+  useEffect(() => {
+    if (vista !== 'lista') return;
+    cargarProductos();
+  }, [vista, busqueda, filtroTema, proveedorIdLista, paginaLista]); // eslint-disable-line
 
   const proveedoresFiltrados = (busqueda.trim() ? busquedaProducto : proveedores)
     .filter(p => !filtroTema || p.tema === filtroTema);
@@ -150,6 +166,23 @@ export default function Dashboard() {
     } catch {
       setSugerenciaModal(null);
     }
+  }
+
+  async function cargarProductos() {
+    setLoadingProductos(true);
+    try {
+      const params = new URLSearchParams({ page: paginaLista, limit: 50 });
+      if (busqueda)         params.set('q',           busqueda);
+      if (filtroTema)       params.set('tema',         filtroTema);
+      if (proveedorIdLista) params.set('proveedorId',  proveedorIdLista);
+      const res  = await apiFetch(`/productos?${params}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setProductos(data.productos || []);
+      setTotalProductos(data.total || 0);
+      setTotalPaginasLista(data.totalPaginas || 1);
+    } catch {}
+    finally { setLoadingProductos(false); }
   }
 
   async function sincronizarJumpseller() {
@@ -289,6 +322,21 @@ export default function Dashboard() {
           );
         })}
 
+        {vista === 'lista' && (
+          <select
+            value={proveedorIdLista}
+            onChange={e => setProveedorIdLista(e.target.value)}
+            style={{
+              padding: '6px 10px', fontSize: 12, fontFamily: F.sans,
+              color: C.text, background: C.surface, border: `1px solid ${C.border}`,
+              borderRadius: 6, outline: 'none', cursor: 'pointer',
+            }}
+          >
+            <option value="">Todos los proveedores</option>
+            {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+          </select>
+        )}
+
         <div style={{ position: 'relative', marginLeft: 'auto' }}>
           <svg
             width="14" height="14" fill="none" viewBox="0 0 24 24"
@@ -299,7 +347,7 @@ export default function Dashboard() {
           </svg>
           <input
             type="text"
-            placeholder="Buscar proveedor o producto..."
+            placeholder={vista === 'lista' ? 'Buscar SKU o producto...' : 'Buscar proveedor o producto...'}
             value={busqueda}
             onChange={e => { setBusqueda(e.target.value); setVisibles(POR_PAGINA); }}
             style={{
@@ -325,58 +373,184 @@ export default function Dashboard() {
             >×</button>
           )}
         </div>
+
+        {/* Switch cuadro / lista */}
+        <div style={{ display: 'flex', gap: 2, background: C.border, borderRadius: 6, padding: 2 }}>
+          {['cuadro', 'lista'].map(v => (
+            <button
+              key={v}
+              onClick={() => setVista(v)}
+              style={{
+                padding: '4px 12px', fontSize: 12, fontWeight: 600,
+                borderRadius: 4, border: 'none', cursor: 'pointer',
+                background: vista === v ? C.surface : 'transparent',
+                color: vista === v ? C.text : C.textMuted,
+                fontFamily: F.sans,
+                boxShadow: vista === v ? shadow.sm : 'none',
+                transition: 'background 0.15s, color 0.15s',
+              }}
+            >
+              {v.charAt(0).toUpperCase() + v.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-        </div>
-      ) : proveedoresFiltrados.length === 0 ? (
-        <div style={{
-          background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
-          padding: '40px 24px', textAlign: 'center', boxShadow: shadow.sm,
-        }}>
-          <p style={{ margin: 0, fontSize: 14, color: C.textSec }}>
-            {filtroTema
-              ? `No hay proveedores en la categoría "${TEMAS.find(t => t.value === filtroTema)?.label}".`
-              : 'No hay proveedores activos. Crea uno en la sección Proveedores.'}
-          </p>
-        </div>
-      ) : (
-        <>
+      {vista === 'cuadro' && (
+        loading ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-            {proveedoresFiltrados.slice(0, visibles).map(p => (
-              <ProveedorCard
-                key={p.id}
-                proveedor={p}
-                uploading={uploading[p.id]}
-                mensaje={mensaje[p.id]}
-                onUpload={file => handleUpload(p.id, file)}
-                onVerProductos={() => setProductosModal({ proveedor: p })}
-              />
-            ))}
+            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
-          {visibles < proveedoresFiltrados.length && (
-            <div style={{ textAlign: 'center', marginTop: 20 }}>
-              <button
-                onClick={() => setVisibles(v => v + POR_PAGINA)}
-                style={{
-                  cursor: 'pointer',
-                  border: `1px solid ${C.border}`,
-                  padding: '8px 24px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  borderRadius: 6,
-                  background: C.surface,
-                  color: C.textSec,
-                  fontFamily: F.sans,
-                }}
-              >
-                Ver más ({proveedoresFiltrados.length - visibles} restantes)
-              </button>
+        ) : proveedoresFiltrados.length === 0 ? (
+          <div style={{
+            background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+            padding: '40px 24px', textAlign: 'center', boxShadow: shadow.sm,
+          }}>
+            <p style={{ margin: 0, fontSize: 14, color: C.textSec }}>
+              {filtroTema
+                ? `No hay proveedores en la categoría "${TEMAS.find(t => t.value === filtroTema)?.label}".`
+                : 'No hay proveedores activos. Crea uno en la sección Proveedores.'}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+              {proveedoresFiltrados.slice(0, visibles).map(p => (
+                <ProveedorCard
+                  key={p.id}
+                  proveedor={p}
+                  uploading={uploading[p.id]}
+                  mensaje={mensaje[p.id]}
+                  onUpload={file => handleUpload(p.id, file)}
+                  onVerProductos={() => setProductosModal({ proveedor: p })}
+                />
+              ))}
+            </div>
+            {visibles < proveedoresFiltrados.length && (
+              <div style={{ textAlign: 'center', marginTop: 20 }}>
+                <button
+                  onClick={() => setVisibles(v => v + POR_PAGINA)}
+                  style={{
+                    cursor: 'pointer',
+                    border: `1px solid ${C.border}`,
+                    padding: '8px 24px',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    borderRadius: 6,
+                    background: C.surface,
+                    color: C.textSec,
+                    fontFamily: F.sans,
+                  }}
+                >
+                  Ver más ({proveedoresFiltrados.length - visibles} restantes)
+                </button>
+              </div>
+            )}
+          </>
+        )
+      )}
+
+      {vista === 'lista' && (
+        <div className="scroll-x" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflowX: 'auto', overflowY: 'hidden', boxShadow: shadow.sm }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans, minWidth: 900 }}>
+            <thead>
+              <tr>
+                <th style={table.th}>SKU</th>
+                <th style={table.th}>Producto</th>
+                <th style={table.th}>Formato</th>
+                <th style={table.th}>Proveedor</th>
+                <th style={table.th}>Marca</th>
+                <th style={{ ...table.th, textAlign: 'right' }}>Costo</th>
+                <th style={{ ...table.th, textAlign: 'right' }}>Precio JS</th>
+                <th style={{ ...table.th, textAlign: 'right' }}>P. Sugerido</th>
+                <th style={{ ...table.th, textAlign: 'right' }}>Markup</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingProductos && Array.from({ length: 10 }).map((_, i) => (
+                <tr key={i}>{Array.from({ length: 9 }).map((_, j) => (
+                  <td key={j} style={table.td}>
+                    <div style={{ height: 13, background: C.border, borderRadius: 4, width: j === 1 ? '70%' : '50%', animation: 'shimmer 1.4s ease-in-out infinite' }} />
+                  </td>
+                ))}</tr>
+              ))}
+
+              {!loadingProductos && productos.length === 0 && (
+                <tr><td colSpan={9} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 48 }}>
+                  {busqueda ? `Sin resultados para "${busqueda}"` : 'Sin productos registrados.'}
+                </td></tr>
+              )}
+
+              {!loadingProductos && productos.map(p => {
+                const cat = p.categoria;
+                const formatoLabel = cat === 'caja'
+                  ? `Caja${p.unidadesCaja ? ` · ${p.unidadesCaja}u` : ''}`
+                  : cat === 'pallet' ? 'Pallet'
+                  : cat === 'unidad' ? 'Unidad'
+                  : null;
+                const formatoBg    = cat === 'caja' ? '#dbeafe' : cat === 'pallet' ? '#fef3c7' : '#f1f5f9';
+                const formatoColor = cat === 'caja' ? '#1d4ed8' : cat === 'pallet' ? '#d97706' : C.textSec;
+
+                return (
+                  <tr key={p.id} style={{ background: C.surface }}
+                    onMouseEnter={e => e.currentTarget.style.background = C.surfaceHover || '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.background = C.surface}
+                  >
+                    <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec, whiteSpace: 'nowrap' }}>{p.sku}</td>
+                    <td style={{ ...table.td, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={p.nombre}>{p.nombre}</td>
+                    <td style={{ ...table.td, whiteSpace: 'nowrap' }}>
+                      {formatoLabel
+                        ? <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: formatoBg, color: formatoColor }}>{formatoLabel}</span>
+                        : <span style={{ color: C.textMuted }}>—</span>
+                      }
+                    </td>
+                    <td style={{ ...table.td, fontSize: 12, color: C.textSec, whiteSpace: 'nowrap' }}>{p.proveedor?.nombre || '—'}</td>
+                    <td style={{ ...table.td, fontSize: 12, color: C.textSec }}>{p.marca || <span style={{ color: C.textMuted }}>—</span>}</td>
+                    <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12 }}>
+                      {p.ultimoCosto != null ? fmt(p.ultimoCosto) : <span style={{ color: C.textMuted }}>—</span>}
+                    </td>
+                    <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12 }}>
+                      {p.precioJS != null ? fmt(p.precioJS) : <span style={{ color: C.textMuted }}>—</span>}
+                    </td>
+                    <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12, fontWeight: 600, color: p.precioSugerido ? C.text : C.textMuted }}>
+                      {p.precioSugerido != null ? fmt(p.precioSugerido) : '—'}
+                    </td>
+                    <td style={{ ...table.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      {p.markupPct != null
+                        ? <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: C.accentLight, color: C.accent }}>{p.markupPct}%</span>
+                        : <span style={{ color: C.textMuted }}>—</span>
+                      }
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {/* Paginación lista */}
+          {totalPaginasLista > 1 && (
+            <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontSize: 12, color: C.textSec, fontFamily: F.sans }}>
+                Página {paginaLista} de {totalPaginasLista} · {totalProductos} productos
+              </span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setPaginaLista(p => Math.max(1, p - 1))} disabled={paginaLista === 1}
+                  style={{ cursor: paginaLista === 1 ? 'default' : 'pointer', padding: '5px 10px', fontSize: 13, borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontFamily: F.sans, opacity: paginaLista === 1 ? 0.4 : 1 }}>
+                  ‹
+                </button>
+                <button onClick={() => setPaginaLista(p => Math.min(totalPaginasLista, p + 1))} disabled={paginaLista === totalPaginasLista}
+                  style={{ cursor: paginaLista === totalPaginasLista ? 'default' : 'pointer', padding: '5px 10px', fontSize: 13, borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontFamily: F.sans, opacity: paginaLista === totalPaginasLista ? 0.4 : 1 }}>
+                  ›
+                </button>
+              </div>
             </div>
           )}
-        </>
+          {totalPaginasLista === 1 && totalProductos > 0 && (
+            <div style={{ padding: '10px 20px', borderTop: `1px solid ${C.border}` }}>
+              <span style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>{totalProductos} productos</span>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
