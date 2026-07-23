@@ -35,7 +35,7 @@ const FORM_VACIO = {
 function inferirTipo(cfg) {
   if (!cfg || typeof cfg !== 'object') return 'ia';
   const t = cfg.tipo;
-  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro'].includes(t)) return t;
+  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa'].includes(t)) return t;
   if (t === 'pdf') return 'pdf';
   if (t === 'ia')  return 'ia';
   if (cfg.colSku || t === 'xlsx') return 'xlsx';
@@ -61,7 +61,7 @@ function parseCampos(cfg) {
 
 function buildConfig(tipo, c) {
   if (tipo === 'ia') return { tipo: 'ia' };
-  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro'].includes(tipo)) return { tipo };
+  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa'].includes(tipo)) return { tipo };
   if (tipo === 'pdf') {
     const r = { tipo: 'pdf', precioIncluyeIVA: c.precioIncluyeIVA };
     if (c.patronCodigo)  r.patronCodigo  = c.patronCodigo;
@@ -342,6 +342,7 @@ export default function Proveedores() {
                 <option value="winnex">Winnex (parser especial)</option>
                 <option value="rommel">Rommel (parser especial)</option>
                 <option value="chipro">Chipro (parser especial)</option>
+                <option value="libesa">Libesa (parser especial)</option>
                 <option value="acco-brand">Parser especial: ACCO Brand</option>
                 <option value="carlos-gardy">Parser especial: Carlos Gardy</option>
                 <option value="engatel">Parser especial: ENGATEL</option>
