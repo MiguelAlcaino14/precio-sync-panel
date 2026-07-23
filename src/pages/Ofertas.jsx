@@ -17,7 +17,7 @@ const CATEGORIAS = [
 
 const vacio = {
   nombre: '', tipo: 'proveedor', descuentoPct: '',
-  proveedorId: '', marca: '', categoria: 'libreria', productoId: '',
+  proveedorId: '', marca: '', categoria: 'libreria', productoIds: [],
   fechaInicio: '', fechaFin: '',
 };
 
@@ -44,7 +44,12 @@ function targetLabel(o) {
   if (o.tipo === 'proveedor') return o.proveedor?.nombre || '—';
   if (o.tipo === 'marca')     return o.marca || '—';
   if (o.tipo === 'categoria') return { libreria: 'Librería', aseo: 'Aseo', alimentos: 'Alimentos' }[o.categoria] || o.categoria;
-  if (o.tipo === 'producto')  return o.producto ? `${o.producto.sku} — ${o.producto.nombre}` : '—';
+  if (o.tipo === 'producto') {
+    const prods = (o.productosOferta || []).map(p => p.producto).filter(Boolean);
+    if (!prods.length) return o.producto ? `${o.producto.sku} — ${o.producto.nombre}` : '—';
+    const primera = `${prods[0].sku} — ${prods[0].nombre}`;
+    return prods.length > 1 ? `${primera} y ${prods.length - 1} más` : primera;
+  }
   return '—';
 }
 
@@ -86,22 +91,29 @@ export default function Ofertas() {
   }
 
   function abrirEditar(o) {
+    // Construir lista de productos seleccionados desde productosOferta (junction) o productoId legacy
+    let productosSeleccionados = [];
+    if (o.productosOferta?.length > 0) {
+      productosSeleccionados = o.productosOferta
+        .map(p => p.producto)
+        .filter(Boolean)
+        .map(p => ({ id: p.id, sku: p.sku, nombre: p.nombre }));
+    } else if (o.productoId && o.producto) {
+      productosSeleccionados = [{ id: o.producto.id, sku: o.producto.sku, nombre: o.producto.nombre }];
+    }
+
     setForm({
-      nombre:      o.nombre,
-      tipo:        o.tipo,
+      nombre:       o.nombre,
+      tipo:         o.tipo,
       descuentoPct: String(o.descuentoPct),
       proveedorId:  o.proveedorId  || '',
       marca:        o.marca        || '',
       categoria:    o.categoria    || 'libreria',
-      productoId:   o.productoId   || '',
+      productoIds:  productosSeleccionados,
       fechaInicio:  o.fechaInicio ? o.fechaInicio.slice(0, 10) : '',
       fechaFin:     o.fechaFin    ? o.fechaFin.slice(0, 10)    : '',
     });
-    if (o.tipo === 'producto' && o.producto) {
-      setSkuBusqueda(`${o.producto.sku} — ${o.producto.nombre}`);
-    } else {
-      setSkuBusqueda('');
-    }
+    setSkuBusqueda('');
     setEditandoId(o.id);
     setFeedback(null);
   }
@@ -110,6 +122,7 @@ export default function Ofertas() {
     setForm(vacio);
     setEditandoId(null);
     setSkuBusqueda('');
+    setSkuOpts([]);
     setFeedback(null);
   }
 
@@ -123,6 +136,20 @@ export default function Ofertas() {
     } catch {}
   }
 
+  function agregarProducto(p) {
+    setForm(f => {
+      if (f.productoIds.some(x => x.id === p.id)) return f;
+      return { ...f, productoIds: [...f.productoIds, { id: p.id, sku: p.sku, nombre: p.nombre }] };
+    });
+    setSkuBusqueda('');
+    setSkuOpts([]);
+    setMostrarSkus(false);
+  }
+
+  function quitarProducto(id) {
+    setForm(f => ({ ...f, productoIds: f.productoIds.filter(p => p.id !== id) }));
+  }
+
   async function guardar() {
     const body = {
       nombre:      form.nombre,
@@ -131,7 +158,7 @@ export default function Ofertas() {
       proveedorId:  form.tipo === 'proveedor' ? form.proveedorId   : undefined,
       marca:        form.tipo === 'marca'     ? form.marca          : undefined,
       categoria:    form.tipo === 'categoria' ? form.categoria      : undefined,
-      productoId:   form.tipo === 'producto'  ? form.productoId     : undefined,
+      productoIds:  form.tipo === 'producto'  ? form.productoIds.map(p => p.id) : undefined,
       fechaInicio:  form.fechaInicio || undefined,
       fechaFin:     form.fechaFin    || undefined,
     };
@@ -256,7 +283,7 @@ export default function Ofertas() {
           <div style={formStyles.field}>
             <label style={formStyles.label}>Aplica a</label>
             <select style={{ ...formStyles.input, cursor: 'pointer', width: 170 }} value={form.tipo}
-              onChange={e => setForm(f => ({ ...f, tipo: e.target.value, proveedorId: '', marca: '', categoria: 'libreria', productoId: '' }))}>
+              onChange={e => setForm(f => ({ ...f, tipo: e.target.value, proveedorId: '', marca: '', categoria: 'libreria', productoIds: [] }))}>
               {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
@@ -300,32 +327,62 @@ export default function Ofertas() {
           )}
 
           {form.tipo === 'producto' && (
-            <div style={{ ...formStyles.field, position: 'relative' }}>
-              <label style={formStyles.label}>Producto (SKU o nombre)</label>
-              <input style={{ ...formStyles.input, width: 240 }} value={skuBusqueda}
-                placeholder="Buscar..."
-                autoComplete="off"
-                onChange={e => { setSkuBusqueda(e.target.value); buscarProductos(e.target.value); }}
-                onBlur={() => setTimeout(() => setMostrarSkus(false), 150)}
-              />
-              {mostrarSkus && skuOpts.length > 0 && (
-                <div style={{
-                  position: 'absolute', top: '100%', left: 0, zIndex: 100, minWidth: 300,
-                  background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
-                  boxShadow: shadow.sm, maxHeight: 200, overflowY: 'auto',
-                }}>
-                  {skuOpts.map(p => (
-                    <div key={p.sku} onMouseDown={() => {
-                      setForm(f => ({ ...f, productoId: p.id }));
-                      setSkuBusqueda(`${p.sku} — ${p.nombre}`);
-                      setMostrarSkus(false);
-                    }} style={{ padding: '7px 12px', cursor: 'pointer', fontSize: 12, borderBottom: `1px solid ${C.border}` }}>
-                      <span style={{ fontFamily: F.mono, fontWeight: 600 }}>{p.sku}</span>
-                      <span style={{ color: C.textSec, marginLeft: 8 }}>{p.nombre}</span>
-                    </div>
+            <div style={{ ...formStyles.field, minWidth: 260 }}>
+              <label style={formStyles.label}>Productos (SKU o nombre)</label>
+
+              {/* Chips de productos seleccionados */}
+              {form.productoIds.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                  {form.productoIds.map(p => (
+                    <span key={p.id} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '2px 8px', borderRadius: 12, fontSize: 11,
+                      background: '#ede9fe', color: '#7c3aed', fontWeight: 500,
+                    }}>
+                      <span style={{ fontFamily: F.mono }}>{p.sku}</span>
+                      <button
+                        onMouseDown={e => { e.preventDefault(); quitarProducto(p.id); }}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#7c3aed', padding: 0, lineHeight: 1, fontSize: 13 }}
+                      >×</button>
+                    </span>
                   ))}
                 </div>
               )}
+
+              {/* Búsqueda */}
+              <div style={{ position: 'relative' }}>
+                <input
+                  style={{ ...formStyles.input, width: 240 }}
+                  value={skuBusqueda}
+                  placeholder="Buscar y agregar..."
+                  autoComplete="off"
+                  onChange={e => { setSkuBusqueda(e.target.value); buscarProductos(e.target.value); }}
+                  onBlur={() => setTimeout(() => setMostrarSkus(false), 150)}
+                />
+                {mostrarSkus && skuOpts.length > 0 && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, zIndex: 100, minWidth: 320,
+                    background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
+                    boxShadow: shadow.sm, maxHeight: 200, overflowY: 'auto',
+                  }}>
+                    {skuOpts.map(p => {
+                      const yaAgregado = form.productoIds.some(x => x.id === p.id);
+                      return (
+                        <div key={p.sku} onMouseDown={() => { if (!yaAgregado) agregarProducto(p); }}
+                          style={{
+                            padding: '7px 12px', cursor: yaAgregado ? 'default' : 'pointer',
+                            fontSize: 12, borderBottom: `1px solid ${C.border}`,
+                            opacity: yaAgregado ? 0.45 : 1,
+                          }}>
+                          <span style={{ fontFamily: F.mono, fontWeight: 600 }}>{p.sku}</span>
+                          <span style={{ color: C.textSec, marginLeft: 8 }}>{p.nombre}</span>
+                          {yaAgregado && <span style={{ marginLeft: 8, color: C.textMuted, fontSize: 10 }}>ya agregado</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
