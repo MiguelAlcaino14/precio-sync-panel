@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { C, F, shadow, table, btn, form as formStyles } from '../theme';
 import { apiFetch } from '../api';
 
@@ -70,6 +70,7 @@ export default function Ofertas() {
   const [mostrarSkus,  setMostrarSkus]  = useState(false);
   const [cargando,     setCargando]     = useState(false);
   const [publicando,   setPublicando]   = useState({});
+  const skuInputRef = useRef(null);
 
   useEffect(() => {
     cargar();
@@ -141,9 +142,8 @@ export default function Ofertas() {
       if (f.productoIds.some(x => x.id === p.id)) return f;
       return { ...f, productoIds: [...f.productoIds, { id: p.id, sku: p.sku, nombre: p.nombre }] };
     });
-    setSkuBusqueda('');
-    setSkuOpts([]);
-    setMostrarSkus(false);
+    // Mantener el dropdown abierto y el input enfocado para seguir agregando
+    skuInputRef.current?.focus();
   }
 
   function quitarProducto(id) {
@@ -283,7 +283,7 @@ export default function Ofertas() {
           <div style={formStyles.field}>
             <label style={formStyles.label}>Aplica a</label>
             <select style={{ ...formStyles.input, cursor: 'pointer', width: 170 }} value={form.tipo}
-              onChange={e => setForm(f => ({ ...f, tipo: e.target.value, proveedorId: '', marca: '', categoria: 'libreria', productoIds: [] }))}>
+              onChange={e => { setSkuBusqueda(''); setSkuOpts([]); setMostrarSkus(false); setForm(f => ({ ...f, tipo: e.target.value, proveedorId: '', marca: '', categoria: 'libreria', productoIds: [] })); }}>
               {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
@@ -352,19 +352,23 @@ export default function Ofertas() {
               {/* Búsqueda */}
               <div style={{ position: 'relative' }}>
                 <input
+                  ref={skuInputRef}
                   style={{ ...formStyles.input, width: 240 }}
                   value={skuBusqueda}
                   placeholder="Buscar y agregar..."
                   autoComplete="off"
                   onChange={e => { setSkuBusqueda(e.target.value); buscarProductos(e.target.value); }}
+                  onFocus={() => { if (skuOpts.length > 0) setMostrarSkus(true); }}
                   onBlur={() => setTimeout(() => setMostrarSkus(false), 150)}
                 />
                 {mostrarSkus && skuOpts.length > 0 && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, zIndex: 100, minWidth: 320,
-                    background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
-                    boxShadow: shadow.sm, maxHeight: 200, overflowY: 'auto',
-                  }}>
+                  <div
+                    onMouseDown={e => e.preventDefault()}
+                    style={{
+                      position: 'absolute', top: '100%', left: 0, zIndex: 100, minWidth: 320,
+                      background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
+                      boxShadow: shadow.sm, maxHeight: 200, overflowY: 'auto',
+                    }}>
                     {skuOpts.map(p => {
                       const yaAgregado = form.productoIds.some(x => x.id === p.id);
                       return (
