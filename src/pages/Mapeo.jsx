@@ -752,7 +752,7 @@ export default function Mapeo() {
       )}
 
       {/* Tabla */}
-      <div className="scroll-x" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: shadow.sm }}>
+      <div className="scroll-x" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflowX: 'auto', overflowY: 'hidden', boxShadow: shadow.sm }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans }}>
           <thead>
             <tr>
