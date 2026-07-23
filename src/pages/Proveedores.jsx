@@ -39,6 +39,7 @@ function inferirTipo(cfg) {
   if (t === 'pdf') return 'pdf';
   if (t === 'ia')  return 'ia';
   if (cfg.colSku || t === 'xlsx') return 'xlsx';
+  if (Array.isArray(cfg.configs)) return 'xlsx'; // formato multi-config legado
   return 'ia';
 }
 
