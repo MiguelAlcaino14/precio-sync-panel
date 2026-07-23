@@ -339,13 +339,13 @@ export default function Ofertas() {
 
           {/* Fechas */}
           <div style={formStyles.field}>
-            <label style={formStyles.label}>Desde (opcional)</label>
-            <input style={{ ...formStyles.input, width: 140 }} type="date" value={form.fechaInicio}
+            <label style={formStyles.label}>Desde *</label>
+            <input required style={{ ...formStyles.input, width: 140 }} type="date" value={form.fechaInicio}
               onChange={e => setForm(f => ({ ...f, fechaInicio: e.target.value }))} />
           </div>
           <div style={formStyles.field}>
-            <label style={formStyles.label}>Hasta (opcional)</label>
-            <input style={{ ...formStyles.input, width: 140 }} type="date" value={form.fechaFin}
+            <label style={formStyles.label}>Hasta *</label>
+            <input required style={{ ...formStyles.input, width: 140 }} type="date" value={form.fechaFin}
               onChange={e => setForm(f => ({ ...f, fechaFin: e.target.value }))} />
           </div>
 

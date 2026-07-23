@@ -359,7 +359,7 @@ export default function Proveedores() {
               </div>
             )}
 
-            {['acco-brand','carlos-gardy','engatel','scai','demarka','cambiaso','winnex','rommel','chipro'].includes(form.configTipo) && (
+            {['acco-brand','carlos-gardy','engatel','scai','demarka','cambiaso','winnex','rommel','chipro','libesa','pronobel'].includes(form.configTipo) && (
               <div style={{ gridColumn: '1 / -1' }}>
                 <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans, background: '#eff6ff', padding: '8px 12px', borderRadius: 6, border: '1px solid #bfdbfe' }}>
                   Parser especial sin configuración adicional requerida.
