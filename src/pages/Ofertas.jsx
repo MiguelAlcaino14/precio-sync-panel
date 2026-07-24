@@ -271,7 +271,7 @@ export default function Ofertas() {
           {editandoId ? 'Editar oferta' : 'Nueva oferta'}
         </p>
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', rowGap: 10 }}>
           {/* Nombre */}
           <div style={formStyles.field}>
             <label style={formStyles.label}>Nombre</label>
@@ -327,17 +327,23 @@ export default function Ofertas() {
           )}
 
           {form.tipo === 'producto' && (
-            <div style={{ ...formStyles.field, minWidth: 260 }}>
+            <div style={{ ...formStyles.field, width: '100%', marginTop: 4 }}>
               <label style={formStyles.label}>Productos (SKU o nombre)</label>
 
               {/* Chips de productos seleccionados */}
               {form.productoIds.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6,
+                  maxHeight: 68, overflowY: 'auto',
+                  padding: '4px 6px', borderRadius: 6,
+                  background: '#f5f3ff', border: `1px solid #ddd6fe`,
+                }}>
                   {form.productoIds.map(p => (
                     <span key={p.id} style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       padding: '2px 8px', borderRadius: 12, fontSize: 11,
                       background: '#ede9fe', color: '#7c3aed', fontWeight: 500,
+                      whiteSpace: 'nowrap',
                     }}>
                       <span style={{ fontFamily: F.mono }}>{p.sku}</span>
                       <button
