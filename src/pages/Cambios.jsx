@@ -427,7 +427,8 @@ export default function Cambios() {
               <th style={table.th}>Proveedor</th>
               <th style={table.th}>Marca</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Costo anterior</th>
-              <th style={{ ...table.th, textAlign: 'right' }}>Costo nuevo</th>
+              <th style={{ ...table.th, textAlign: 'right' }}>Costo neto</th>
+              <th style={{ ...table.th, textAlign: 'right' }}>Costo + IVA</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Variación costo</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Precio JumpSeller</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Precio sugerido</th>
@@ -436,7 +437,7 @@ export default function Cambios() {
           <tbody>
             {cambiosPag.length === 0 && (
               <tr>
-                <td colSpan={11} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
+                <td colSpan={12} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
                   No hay registros en este estado.
                 </td>
               </tr>
@@ -500,6 +501,12 @@ export default function Cambios() {
                         </span>
                       )}
                     </div>
+                  </td>
+                  <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right' }}>
+                    <span style={{ fontWeight: 600 }}>
+                      {fmt(Math.round(c.costoNuevo * 1.19))}
+                      <span style={{ fontSize: 10, fontWeight: 400, color: C.textMuted }}> /u</span>
+                    </span>
                   </td>
                   <td style={{ ...table.td, textAlign: 'right' }}>
                     {pct ? (
