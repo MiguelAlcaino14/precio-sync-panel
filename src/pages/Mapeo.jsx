@@ -167,6 +167,15 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query, buscarJS]);
 
+  // Pre-seleccionar sugerencia automática si el item ya tiene jumpsellerProductId
+  useEffect(() => {
+    if (!item.jumpsellerProductId || seleccionado) return;
+    apiFetch(`/mapeo/producto-js/${item.jumpsellerProductId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(prod => { if (prod) setSeleccionado(prod); })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function guardarEdicion() {
     const payload = {};
     const skuNorm = skuEdit.trim().toLowerCase();
