@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { C, F, shadow, table, btn, form as formStyles } from '../theme';
 import { apiFetch } from '../api';
 
@@ -11,6 +11,9 @@ export default function Reglas() {
   const [feedback, setFeedback]   = useState(null); // { ok, texto }
   const [skuSugerencias, setSkuSugerencias]         = useState([]);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const [nombrePreview, setNombrePreview]           = useState({ items: [], total: 0 });
+  const [mostrarNombrePreview, setMostrarNombrePreview] = useState(false);
+  const nombreDebounceRef = useRef(null);
 
   useEffect(() => {
     apiFetch('/reglas').then(r => r.json()).then(data => setReglas(Array.isArray(data) ? data : [])).catch(() => {});
@@ -94,6 +97,26 @@ export default function Reglas() {
       setSkuSugerencias(Array.isArray(data) ? data : []);
       setMostrarSugerencias(true);
     } catch { setSkuSugerencias([]); }
+  }
+
+  function buscarPorNombre(texto) {
+    clearTimeout(nombreDebounceRef.current);
+    if (!texto.trim()) {
+      setNombrePreview({ items: [], total: 0 });
+      setMostrarNombrePreview(false);
+      return;
+    }
+    nombreDebounceRef.current = setTimeout(async () => {
+      try {
+        const res  = await apiFetch(`/productos?q=${encodeURIComponent(texto)}&limit=5`);
+        const data = await res.json();
+        const items = Array.isArray(data.productos) ? data.productos : [];
+        setNombrePreview({ items, total: data.total ?? items.length });
+        setMostrarNombrePreview(true);
+      } catch {
+        setNombrePreview({ items: [], total: 0 });
+      }
+    }, 350);
   }
 
   return (
@@ -186,10 +209,42 @@ export default function Reglas() {
               </div>
             )}
           </div>
-          <div style={formStyles.field}>
+          <div style={{ ...formStyles.field, position: 'relative' }}>
             <label style={formStyles.label}>Nombre contiene</label>
-            <input style={formStyles.input} value={form.nombreContiene} placeholder="Ej: resma"
-              onChange={e => setForm(f => ({ ...f, nombreContiene: e.target.value }))} />
+            <input
+              style={formStyles.input}
+              value={form.nombreContiene}
+              placeholder="Ej: resma"
+              autoComplete="off"
+              onChange={e => {
+                setForm(f => ({ ...f, nombreContiene: e.target.value }));
+                buscarPorNombre(e.target.value);
+              }}
+              onFocus={() => form.nombreContiene && setMostrarNombrePreview(true)}
+              onBlur={() => setTimeout(() => setMostrarNombrePreview(false), 150)}
+            />
+            {mostrarNombrePreview && nombrePreview.items.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, zIndex: 100, minWidth: 280,
+                background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
+                boxShadow: shadow.sm, overflow: 'hidden',
+              }}>
+                <div style={{ padding: '5px 10px', fontSize: 11, color: C.textMuted, borderBottom: `1px solid ${C.border}`, background: C.bg }}>
+                  {nombrePreview.total} producto{nombrePreview.total !== 1 ? 's' : ''} coinciden
+                </div>
+                {nombrePreview.items.map(p => (
+                  <div key={p.id} style={{ padding: '6px 10px', fontSize: 12, borderBottom: `1px solid ${C.border}`, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMuted, flexShrink: 0 }}>{p.sku}</span>
+                    <span style={{ color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</span>
+                  </div>
+                ))}
+                {nombrePreview.total > 5 && (
+                  <div style={{ padding: '5px 10px', fontSize: 11, color: C.textMuted, textAlign: 'center' }}>
+                    y {nombrePreview.total - 5} más...
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div style={formStyles.field}>
             <label style={formStyles.label}>Marca</label>
