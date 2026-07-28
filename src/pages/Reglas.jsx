@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { C, F, shadow, table, btn, form as formStyles } from '../theme';
 import { apiFetch } from '../api';
 
-const vacioForm = { nombre: '', markupPct: '', sku: '', nombreContiene: '', marca: '', categoria: '', costoMin: '', costoMax: '' };
+const vacioForm = { nombre: '', markupPct: '', sku: '', nombreContiene: '', proveedorId: '', marca: '', categoria: '', costoMin: '', costoMax: '' };
 
 export default function Reglas() {
-  const [reglas, setReglas]       = useState([]);
-  const [form, setForm]           = useState(vacioForm);
+  const [reglas, setReglas]         = useState([]);
+  const [proveedores, setProveedores] = useState([]);
+  const [form, setForm]             = useState(vacioForm);
   const [editandoId, setEditandoId] = useState(null);
-  const [feedback, setFeedback]   = useState(null); // { ok, texto }
+  const [feedback, setFeedback]     = useState(null);
   const [skuSugerencias, setSkuSugerencias]         = useState([]);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
   const [nombrePreview, setNombrePreview]           = useState({ items: [], total: 0 });
@@ -17,6 +18,7 @@ export default function Reglas() {
 
   useEffect(() => {
     apiFetch('/reglas').then(r => r.json()).then(data => setReglas(Array.isArray(data) ? data : [])).catch(() => {});
+    apiFetch('/proveedores?todos=1').then(r => r.json()).then(data => setProveedores(Array.isArray(data) ? data : [])).catch(() => {});
   }, []);
 
   function abrirEditar(r) {
@@ -25,6 +27,7 @@ export default function Reglas() {
       markupPct:      String(r.markupPct),
       sku:            r.sku            || '',
       nombreContiene: r.nombreContiene || '',
+      proveedorId:    r.proveedorId    || '',
       marca:          r.marca          || '',
       categoria:      r.categoria      || '',
       costoMin:       r.costoMin  != null ? String(r.costoMin)  : '',
@@ -50,6 +53,7 @@ export default function Reglas() {
       markupPct:      parseFloat(form.markupPct),
       sku:            form.sku            || null,
       nombreContiene: form.nombreContiene || null,
+      proveedorId:    form.proveedorId    || null,
       marca:          form.marca          || null,
       categoria:      form.categoria      || null,
       costoMin:       form.costoMin  ? parseFloat(form.costoMin)  : null,
@@ -99,7 +103,7 @@ export default function Reglas() {
     } catch { setSkuSugerencias([]); }
   }
 
-  function buscarPorNombre(texto) {
+  function buscarPorNombre(texto, provId) {
     clearTimeout(nombreDebounceRef.current);
     if (!texto.trim()) {
       setNombrePreview({ items: [], total: 0 });
@@ -108,7 +112,9 @@ export default function Reglas() {
     }
     nombreDebounceRef.current = setTimeout(async () => {
       try {
-        const res  = await apiFetch(`/productos?q=${encodeURIComponent(texto)}&limit=5`);
+        let url = `/productos?q=${encodeURIComponent(texto)}&limit=5`;
+        if (provId) url += `&proveedorId=${encodeURIComponent(provId)}`;
+        const res  = await apiFetch(url);
         const data = await res.json();
         const items = Array.isArray(data.productos) ? data.productos : [];
         setNombrePreview({ items, total: data.total ?? items.length });
@@ -218,7 +224,7 @@ export default function Reglas() {
               autoComplete="off"
               onChange={e => {
                 setForm(f => ({ ...f, nombreContiene: e.target.value }));
-                buscarPorNombre(e.target.value);
+                buscarPorNombre(e.target.value, form.proveedorId);
               }}
               onFocus={() => form.nombreContiene && setMostrarNombrePreview(true)}
               onBlur={() => setTimeout(() => setMostrarNombrePreview(false), 150)}
@@ -245,6 +251,22 @@ export default function Reglas() {
                 )}
               </div>
             )}
+          </div>
+          <div style={formStyles.field}>
+            <label style={formStyles.label}>Proveedor</label>
+            <select
+              style={{ ...formStyles.input, cursor: 'pointer', minWidth: 160 }}
+              value={form.proveedorId}
+              onChange={e => {
+                setForm(f => ({ ...f, proveedorId: e.target.value }));
+                if (form.nombreContiene) buscarPorNombre(form.nombreContiene, e.target.value);
+              }}
+            >
+              <option value="">Todos</option>
+              {proveedores.map(p => (
+                <option key={p.id} value={p.id}>{p.nombre}</option>
+              ))}
+            </select>
           </div>
           <div style={formStyles.field}>
             <label style={formStyles.label}>Marca</label>
@@ -301,6 +323,7 @@ export default function Reglas() {
               <th style={{ ...table.th, textAlign: 'right' }}>Margen de ganancia %</th>
               <th style={table.th}>SKU</th>
               <th style={table.th}>Nombre contiene</th>
+              <th style={table.th}>Proveedor</th>
               <th style={table.th}>Marca</th>
               <th style={table.th}>Unidad</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Desde $</th>
@@ -311,7 +334,7 @@ export default function Reglas() {
           <tbody>
             {reglas.length === 0 && (
               <tr>
-                <td colSpan={9} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 36 }}>
+                <td colSpan={10} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 36 }}>
                   No hay reglas definidas. Agrega una para comenzar.
                 </td>
               </tr>
@@ -336,6 +359,9 @@ export default function Reglas() {
                 <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec }}>{r.sku || '—'}</td>
                 <td style={{ ...table.td, fontSize: 12, color: C.textSec }}>
                   {r.nombreContiene ? <span style={{ background: C.accentLight, color: C.accent, borderRadius: 4, padding: '1px 6px', fontFamily: F.mono, fontSize: 11 }}>*{r.nombreContiene}*</span> : '—'}
+                </td>
+                <td style={{ ...table.td, fontSize: 12, color: C.textSec }}>
+                  {r.proveedorId ? (proveedores.find(p => p.id === r.proveedorId)?.nombre || '—') : '—'}
                 </td>
                 <td style={{ ...table.td, color: C.textSec, fontSize: 12 }}>{r.marca || '—'}</td>
                 <td style={{ ...table.td, color: C.textSec, fontFamily: F.mono, fontSize: 12 }}>{r.categoria || '—'}</td>
