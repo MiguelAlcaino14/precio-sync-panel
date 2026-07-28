@@ -145,6 +145,24 @@ export default function Cambios() {
     await aprobar(ids);
   }
 
+  async function recalcularTodos() {
+    if (!window.confirm('¿Recalcular los precios de TODOS los productos?\n\nEsto aplicará la fórmula actual (sin IVA) y generará cambios listos para publicar en JumpSeller.\n\nEsta acción no se puede deshacer.')) return;
+    setLoading(true);
+    setResultPublicar(null);
+    try {
+      const res  = await apiFetch('/sync/recalcular-precios', { method: 'POST' });
+      const data = await res.json();
+      if (data.error) { alert(`Error: ${data.error}`); return; }
+      alert(`Recálculo completado:\n• ${data.recalculados} precios actualizados\n• ${data.sinCambio} sin cambio\n• ${data.sinCosto} sin costo registrado\n\nCambia al filtro "Aprobados" para publicarlos en JumpSeller.`);
+      setAlertCounts(a => ({ ...a, aprobado: a.aprobado + (data.recalculados ?? 0) }));
+      setEstado('aprobado');
+    } catch {
+      alert('Error de conexión con la API');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function limpiarPendientes() {
     const total = cambios.length;
     if (!total) return;
@@ -242,6 +260,20 @@ export default function Cambios() {
         {estado === 'pendiente' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button
+                onClick={recalcularTodos}
+                disabled={loading}
+                title="Recalcula todos los precios sin IVA y genera cambios listos para publicar"
+                style={{
+                  ...btn.outline, fontSize: 12,
+                  color: '#b45309', border: '1px solid #d97706',
+                  background: '#fffbeb',
+                  opacity: loading ? 0.45 : 1,
+                  cursor: loading ? 'default' : 'pointer',
+                }}
+              >
+                {loading ? 'Procesando...' : 'Recalcular todos los precios'}
+              </button>
               <button onClick={() => window.open('/api/exportar', '_blank')} style={{ ...btn.outline, fontSize: 12 }}>
                 Exportar CSV
               </button>
