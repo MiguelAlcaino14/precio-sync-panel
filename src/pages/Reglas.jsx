@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { C, F, shadow, table, btn, form as formStyles } from '../theme';
 import { apiFetch } from '../api';
 
-const vacioForm = { nombre: '', markupPct: '', sku: '', marca: '', categoria: '', costoMin: '', costoMax: '' };
+const vacioForm = { nombre: '', markupPct: '', sku: '', nombreContiene: '', marca: '', categoria: '', costoMin: '', costoMax: '' };
 
 export default function Reglas() {
   const [reglas, setReglas]       = useState([]);
@@ -18,13 +18,14 @@ export default function Reglas() {
 
   function abrirEditar(r) {
     setForm({
-      nombre:    r.nombre,
-      markupPct: String(r.markupPct),
-      sku:       r.sku       || '',
-      marca:     r.marca     || '',
-      categoria: r.categoria || '',
-      costoMin:  r.costoMin  != null ? String(r.costoMin)  : '',
-      costoMax:  r.costoMax  != null ? String(r.costoMax)  : '',
+      nombre:         r.nombre,
+      markupPct:      String(r.markupPct),
+      sku:            r.sku            || '',
+      nombreContiene: r.nombreContiene || '',
+      marca:          r.marca          || '',
+      categoria:      r.categoria      || '',
+      costoMin:       r.costoMin  != null ? String(r.costoMin)  : '',
+      costoMax:       r.costoMax  != null ? String(r.costoMax)  : '',
     });
     setEditandoId(r.id);
     setFeedback(null);
@@ -42,13 +43,14 @@ export default function Reglas() {
       return;
     }
     const body = {
-      nombre:    form.nombre,
-      markupPct: parseFloat(form.markupPct),
-      sku:       form.sku       || null,
-      marca:     form.marca     || null,
-      categoria: form.categoria || null,
-      costoMin:  form.costoMin  ? parseFloat(form.costoMin)  : null,
-      costoMax:  form.costoMax  ? parseFloat(form.costoMax)  : null,
+      nombre:         form.nombre,
+      markupPct:      parseFloat(form.markupPct),
+      sku:            form.sku            || null,
+      nombreContiene: form.nombreContiene || null,
+      marca:          form.marca          || null,
+      categoria:      form.categoria      || null,
+      costoMin:       form.costoMin  ? parseFloat(form.costoMin)  : null,
+      costoMax:       form.costoMax  ? parseFloat(form.costoMax)  : null,
     };
     try {
       if (editandoId) {
@@ -185,6 +187,11 @@ export default function Reglas() {
             )}
           </div>
           <div style={formStyles.field}>
+            <label style={formStyles.label}>Nombre contiene</label>
+            <input style={formStyles.input} value={form.nombreContiene} placeholder="Ej: resma"
+              onChange={e => setForm(f => ({ ...f, nombreContiene: e.target.value }))} />
+          </div>
+          <div style={formStyles.field}>
             <label style={formStyles.label}>Marca</label>
             <input style={formStyles.input} value={form.marca} placeholder="Ej: Torre"
               onChange={e => setForm(f => ({ ...f, marca: e.target.value }))} />
@@ -238,6 +245,7 @@ export default function Reglas() {
               <th style={table.th}>Nombre</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Margen de ganancia %</th>
               <th style={table.th}>SKU</th>
+              <th style={table.th}>Nombre contiene</th>
               <th style={table.th}>Marca</th>
               <th style={table.th}>Unidad</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Desde $</th>
@@ -248,7 +256,7 @@ export default function Reglas() {
           <tbody>
             {reglas.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 36 }}>
+                <td colSpan={9} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 36 }}>
                   No hay reglas definidas. Agrega una para comenzar.
                 </td>
               </tr>
@@ -271,6 +279,9 @@ export default function Reglas() {
                   </span>
                 </td>
                 <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec }}>{r.sku || '—'}</td>
+                <td style={{ ...table.td, fontSize: 12, color: C.textSec }}>
+                  {r.nombreContiene ? <span style={{ background: C.accentLight, color: C.accent, borderRadius: 4, padding: '1px 6px', fontFamily: F.mono, fontSize: 11 }}>*{r.nombreContiene}*</span> : '—'}
+                </td>
                 <td style={{ ...table.td, color: C.textSec, fontSize: 12 }}>{r.marca || '—'}</td>
                 <td style={{ ...table.td, color: C.textSec, fontFamily: F.mono, fontSize: 12 }}>{r.categoria || '—'}</td>
                 <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12, color: C.textSec }}>
