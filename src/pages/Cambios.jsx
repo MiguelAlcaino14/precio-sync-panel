@@ -26,6 +26,9 @@ export default function Cambios() {
   const [alertCounts, setAlertCounts]       = useState({ pendiente: 0, aprobado: 0 });
   const [todosProveedores, setTodosProveedores] = useState([]);
   const checkAllRef                         = useRef(null);
+  const [editandoPrecio, setEditandoPrecio] = useState(null); // { id, productoId, sku, nombre, precioActual }
+  const [editandoValor, setEditandoValor]   = useState('');
+  const [editandoLoading, setEditandoLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -161,6 +164,39 @@ export default function Cambios() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function revertir(idsOverride) {
+    const ids = idsOverride ?? selIds;
+    if (!ids.length) return;
+    setLoading(true);
+    try {
+      await apiFetch('/cambios/revertir', { method: 'POST', body: JSON.stringify({ ids }) });
+      setCambios(c => {
+        const nuevos = c.filter(x => !ids.includes(x.id));
+        setPagina(p => Math.min(p, Math.ceil(nuevos.length / porPagina) || 1));
+        return nuevos;
+      });
+      setSeleccion({});
+      setAlertCounts(a => ({ pendiente: a.pendiente + ids.length, aprobado: Math.max(0, a.aprobado - ids.length) }));
+    } catch {}
+    finally { setLoading(false); }
+  }
+
+  async function guardarPrecioEditado() {
+    const precio = Number(editandoValor);
+    if (!editandoPrecio || !precio || precio <= 0) return;
+    setEditandoLoading(true);
+    try {
+      const res = await apiFetch('/sync/forzar-precio', {
+        method: 'POST',
+        body:   JSON.stringify({ productoId: editandoPrecio.productoId, precio }),
+      });
+      if (!res.ok) { alert('Error al guardar el precio'); return; }
+      setEditandoPrecio(null);
+      setAlertCounts(a => ({ ...a, aprobado: a.aprobado + 1 }));
+    } catch { alert('Error de conexión'); }
+    finally { setEditandoLoading(false); }
   }
 
   async function limpiarPendientes() {
@@ -322,14 +358,29 @@ export default function Cambios() {
           </div>
         )}
         {estado === 'aprobado' && (
-          <button
-            onClick={publicar}
-            disabled={!selIds.length || loading}
-            style={{ ...btn.green, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
-          >
-            <JumpsellerIcon />
-            {loading ? 'Publicando...' : `Publicar en JumpSeller${selIds.length ? ` (${selIds.length})` : ''}`}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={() => revertir()}
+              disabled={!selIds.length || loading}
+              style={{
+                ...btn.outline, fontSize: 12,
+                color: selIds.length ? C.yellow : C.textMuted,
+                border: `1px solid ${selIds.length ? C.yellow : C.border}`,
+                opacity: (!selIds.length || loading) ? 0.45 : 1,
+                cursor: (!selIds.length || loading) ? 'default' : 'pointer',
+              }}
+            >
+              {loading ? 'Procesando...' : `Deshacer${selIds.length ? ` (${selIds.length})` : ''}`}
+            </button>
+            <button
+              onClick={publicar}
+              disabled={!selIds.length || loading}
+              style={{ ...btn.green, opacity: (!selIds.length || loading) ? 0.45 : 1, cursor: (!selIds.length || loading) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
+            >
+              <JumpsellerIcon />
+              {loading ? 'Publicando...' : `Publicar en JumpSeller${selIds.length ? ` (${selIds.length})` : ''}`}
+            </button>
+          </div>
         )}
       </div>
 
@@ -464,12 +515,15 @@ export default function Cambios() {
               <th style={{ ...table.th, textAlign: 'right' }}>Variación costo</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Precio JumpSeller</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Precio sugerido</th>
+              {(estado === 'aprobado' || estado === 'publicado') && (
+                <th style={{ ...table.th, textAlign: 'center' }}>Acción</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {cambiosPag.length === 0 && (
               <tr>
-                <td colSpan={12} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
+                <td colSpan={estado === 'aprobado' || estado === 'publicado' ? 13 : 12} style={{ ...table.td, textAlign: 'center', color: C.textMuted, padding: 40 }}>
                   No hay registros en este estado.
                 </td>
               </tr>
@@ -612,6 +666,42 @@ export default function Cambios() {
                       </span>
                     )}
                   </td>
+                  {/* Columna Acción */}
+                  {(estado === 'aprobado' || estado === 'publicado') && (
+                    <td style={{ ...table.td, textAlign: 'center' }}>
+                      {estado === 'aprobado' && (
+                        <button
+                          onClick={() => revertir([c.id])}
+                          disabled={loading}
+                          style={{
+                            ...btn.outline, fontSize: 11, padding: '4px 10px',
+                            color: C.yellow, border: `1px solid ${C.yellow}`,
+                            opacity: loading ? 0.45 : 1,
+                            cursor: loading ? 'default' : 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Deshacer
+                        </button>
+                      )}
+                      {estado === 'publicado' && (
+                        <button
+                          onClick={() => {
+                            const precioActual = c.producto?.precioVenta?.precio ?? c.precioSugerido ?? null;
+                            setEditandoPrecio({ productoId: c.productoId, sku: c.producto.sku, nombre: c.producto.nombre, precioActual });
+                            setEditandoValor(String(precioActual ?? ''));
+                          }}
+                          style={{
+                            ...btn.outline, fontSize: 11, padding: '4px 10px',
+                            color: C.accent, border: `1px solid ${C.accent}`,
+                            cursor: 'pointer', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Editar precio
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -626,6 +716,78 @@ export default function Cambios() {
         porPagina={porPagina}
         onCambiarPorPagina={n => { setPorPagina(n); setPagina(1); }}
       />
+
+      {editandoPrecio && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999,
+        }}
+          onClick={e => { if (e.target === e.currentTarget) setEditandoPrecio(null); }}
+        >
+          <div style={{
+            background: C.surface, borderRadius: 12, padding: 28,
+            minWidth: 360, maxWidth: 440, boxShadow: shadow.md,
+            border: `1px solid ${C.border}`,
+          }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: C.text }}>
+              Editar precio de venta
+            </h3>
+            <p style={{ margin: '0 0 18px', fontSize: 12, color: C.textSec, fontFamily: F.mono }}>
+              {editandoPrecio.sku} — {editandoPrecio.nombre}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans }}>
+                PRECIO ACTUAL
+              </label>
+              <span style={{ fontFamily: F.mono, fontSize: 13, color: C.textSec }}>
+                {editandoPrecio.precioActual != null ? fmt(editandoPrecio.precioActual) : '—'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 24 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans }}>
+                PRECIO NUEVO
+              </label>
+              <input
+                type="number"
+                value={editandoValor}
+                onChange={e => setEditandoValor(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') guardarPrecioEditado(); if (e.key === 'Escape') setEditandoPrecio(null); }}
+                autoFocus
+                style={{
+                  padding: '8px 12px', fontSize: 14, fontFamily: F.mono,
+                  border: `1px solid ${C.border}`, borderRadius: 6,
+                  background: C.surfaceHover, color: C.text, outline: 'none',
+                  width: '100%', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setEditandoPrecio(null)}
+                disabled={editandoLoading}
+                style={{ ...btn.outline, fontSize: 13, opacity: editandoLoading ? 0.45 : 1, cursor: editandoLoading ? 'default' : 'pointer' }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarPrecioEditado}
+                disabled={editandoLoading || !editandoValor || Number(editandoValor) <= 0}
+                style={{
+                  ...btn.solid, fontSize: 13,
+                  opacity: (editandoLoading || !editandoValor || Number(editandoValor) <= 0) ? 0.45 : 1,
+                  cursor: (editandoLoading || !editandoValor || Number(editandoValor) <= 0) ? 'default' : 'pointer',
+                }}
+              >
+                {editandoLoading ? 'Guardando...' : 'Guardar y aprobar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
