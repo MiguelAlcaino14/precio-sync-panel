@@ -25,7 +25,7 @@ export async function apiFetch(path, options = {}) {
   if (res.status === 401) {
     clearToken();
     clearUser();
-    window.location.href = '/login';
+    window.dispatchEvent(new CustomEvent('unauthorized'));
     throw new Error('No autorizado');
   }
 

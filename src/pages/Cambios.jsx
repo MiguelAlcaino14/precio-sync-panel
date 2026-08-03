@@ -511,10 +511,10 @@ export default function Cambios() {
               <th style={table.th}>Marca</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Costo anterior</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Costo neto</th>
-              <th style={{ ...table.th, textAlign: 'right' }}>Costo + IVA</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Variación costo</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Precio JumpSeller</th>
               <th style={{ ...table.th, textAlign: 'right' }}>Precio sugerido</th>
+              <th style={{ ...table.th, textAlign: 'right' }}>Precio + IVA</th>
               {(estado === 'aprobado' || estado === 'publicado') && (
                 <th style={{ ...table.th, textAlign: 'center' }}>Acción</th>
               )}
@@ -588,12 +588,6 @@ export default function Cambios() {
                       )}
                     </div>
                   </td>
-                  <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right' }}>
-                    <span style={{ fontWeight: 600 }}>
-                      {fmt(Math.round(c.costoNuevo * 1.19))}
-                      <span style={{ fontSize: 10, fontWeight: 400, color: C.textMuted }}> /u</span>
-                    </span>
-                  </td>
                   <td style={{ ...table.td, textAlign: 'right' }}>
                     {pct ? (
                       <span style={{
@@ -644,7 +638,7 @@ export default function Cambios() {
                       <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
                         <input
                           type="number"
-                          defaultValue={c.precioSugerido ?? ''}
+                          value={preciosEdit[c.id] ?? c.precioSugerido ?? ''}
                           onChange={e => setPreciosEdit(p => ({ ...p, [c.id]: Number(e.target.value) }))}
                           style={{
                             width: 110, padding: '5px 8px',
@@ -665,6 +659,15 @@ export default function Cambios() {
                         {fmt(c.precioSugerido ?? c.precioActual ?? 0)}
                       </span>
                     )}
+                  </td>
+                  {/* Precio sugerido + IVA (solo referencia, no editable) */}
+                  <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', color: C.textSec }}>
+                    {(() => {
+                      const base = estado === 'pendiente'
+                        ? (preciosEdit[c.id] ?? c.precioSugerido)
+                        : (c.precioSugerido ?? c.precioActual);
+                      return base ? fmt(Math.round(base * 1.19)) : <span style={{ color: C.textMuted }}>—</span>;
+                    })()}
                   </td>
                   {/* Columna Acción */}
                   {(estado === 'aprobado' || estado === 'publicado') && (

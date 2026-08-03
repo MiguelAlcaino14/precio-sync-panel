@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { getToken, getUser, clearToken, clearUser } from './api';
 import Layout    from './components/Layout';
@@ -27,6 +27,17 @@ export default function App() {
     setAutenticado(false);
     setUserState(null);
   }
+
+  useEffect(() => {
+    const onUnauthorized = () => {
+      clearToken();
+      clearUser();
+      setAutenticado(false);
+      setUserState(null);
+    };
+    window.addEventListener('unauthorized', onUnauthorized);
+    return () => window.removeEventListener('unauthorized', onUnauthorized);
+  }, []);
 
   if (!autenticado) {
     return <Login onLogin={handleLogin} />;

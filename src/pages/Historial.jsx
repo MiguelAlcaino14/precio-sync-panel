@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { C, F, shadow, table, btn } from '../theme';
 import { apiFetch } from '../api';
 
@@ -18,24 +18,28 @@ export default function Historial() {
   const [pagina, setPagina]           = useState(1);
   const [porPagina, setPorPagina]     = useState(20);
   const [filtroProv, setFiltroProv]   = useState(null);
+  const [pollDelay, setPollDelay]     = useState(5_000);
+  const pollTimerRef                  = useRef(null);
 
   async function cargar() {
     try {
       const res  = await apiFetch('/exportar/historial');
       const data = await res.json();
       setHistorial(Array.isArray(data) ? data : []);
-    } catch {}
-    finally { setLoading(false); }
+      setPollDelay(5_000); // reset en éxito
+    } catch {
+      setPollDelay(d => Math.min(d * 2, 60_000)); // backoff hasta 60s
+    } finally { setLoading(false); }
   }
 
   useEffect(() => {
     cargar();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const id = setInterval(cargar, 5_000);
-    return () => clearInterval(id);
-  }, []);
+    pollTimerRef.current = setTimeout(cargar, pollDelay);
+    return () => clearTimeout(pollTimerRef.current);
+  }, [pollDelay]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const proveedores   = [...new Set(historial.map(h => h.proveedor?.nombre).filter(Boolean))].sort();
   const historialFilt = filtroProv ? historial.filter(h => h.proveedor?.nombre === filtroProv) : historial;
