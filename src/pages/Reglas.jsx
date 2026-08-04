@@ -44,8 +44,19 @@ export default function Reglas() {
   }
 
   async function guardar() {
-    if (!form.nombre || !form.markupPct) {
-      setFeedback({ ok: false, texto: 'Nombre y margen son obligatorios.' });
+    if (!form.nombre.trim()) {
+      setFeedback({ ok: false, texto: 'El nombre es obligatorio.' });
+      return;
+    }
+    const markup = parseFloat(form.markupPct);
+    if (!form.markupPct || isNaN(markup) || markup <= 0 || markup >= 100) {
+      setFeedback({ ok: false, texto: 'El margen debe ser un número entre 1 y 99.' });
+      return;
+    }
+    const costoMin = form.costoMin ? parseFloat(form.costoMin) : null;
+    const costoMax = form.costoMax ? parseFloat(form.costoMax) : null;
+    if (costoMin !== null && costoMax !== null && costoMin >= costoMax) {
+      setFeedback({ ok: false, texto: 'El costo mínimo debe ser menor que el máximo.' });
       return;
     }
     const body = {

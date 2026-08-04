@@ -151,6 +151,31 @@ export default function Ofertas() {
   }
 
   async function guardar() {
+    if (!form.nombre.trim()) {
+      setFeedback({ ok: false, texto: 'El nombre es obligatorio.' });
+      return;
+    }
+    const descuento = parseFloat(form.descuentoPct);
+    if (!form.descuentoPct || isNaN(descuento) || descuento < 1 || descuento > 99) {
+      setFeedback({ ok: false, texto: 'El descuento debe estar entre 1 y 99.' });
+      return;
+    }
+    if (form.tipo === 'proveedor' && !form.proveedorId) {
+      setFeedback({ ok: false, texto: 'Selecciona un proveedor.' });
+      return;
+    }
+    if (form.tipo === 'marca' && !form.marca?.trim()) {
+      setFeedback({ ok: false, texto: 'Ingresa una marca.' });
+      return;
+    }
+    if (form.tipo === 'producto' && !form.productoIds?.length) {
+      setFeedback({ ok: false, texto: 'Agrega al menos un producto.' });
+      return;
+    }
+    if (form.fechaInicio && form.fechaFin && form.fechaFin < form.fechaInicio) {
+      setFeedback({ ok: false, texto: 'La fecha de fin debe ser posterior a la de inicio.' });
+      return;
+    }
     const body = {
       nombre:      form.nombre,
       tipo:        form.tipo,

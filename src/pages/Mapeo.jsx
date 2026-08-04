@@ -671,9 +671,9 @@ export default function Mapeo() {
     setSeleccionados(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }
 
-  function toggleTodos() {
-    setSeleccionados(seleccionados.size === items.length ? new Set() : new Set(items.map(it => it.id)));
-  }
+  const toggleTodos = useCallback(() => {
+    setSeleccionados(prev => prev.size === items.length ? new Set() : new Set(items.map(it => it.id)));
+  }, [items]);
 
   const todosMarcados   = items.length > 0 && seleccionados.size === items.length;
   const algunosMarcados = seleccionados.size > 0 && seleccionados.size < items.length;
