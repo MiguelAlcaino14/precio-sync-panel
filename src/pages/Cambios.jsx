@@ -30,6 +30,8 @@ export default function Cambios() {
   const [editandoPrecio, setEditandoPrecio] = useState(null); // { id, productoId, sku, nombre, precioActual }
   const [editandoValor, setEditandoValor]   = useState('');
   const [editandoLoading, setEditandoLoading] = useState(false);
+  const [nombreExpandido, setNombreExpandido] = useState(null); // cambio.id | null
+  const nombreExpandidoRef                    = useRef(null);
 
   useEffect(() => {
     Promise.all([
@@ -62,6 +64,17 @@ export default function Cambios() {
       })
       .catch(() => {});
   }, [estado]);
+
+  useEffect(() => {
+    if (!nombreExpandido) return;
+    const handler = (e) => {
+      if (nombreExpandidoRef.current && !nombreExpandidoRef.current.contains(e.target)) {
+        setNombreExpandido(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [nombreExpandido]);
 
   const provNombre   = c => c.archivo?.proveedor?.nombre ?? c.producto?.proveedor?.nombre;
   // Combina proveedores con cambios en estado actual + todos los registrados
@@ -597,6 +610,7 @@ export default function Cambios() {
               const precioBajoCosto = preciosEdit[c.id] !== undefined && Number(preciosEdit[c.id]) > 0 && Number(preciosEdit[c.id]) < c.costoNuevo;
 
               return (
+                <>
                 <tr key={c.id} style={{ background: sel ? C.rowSelected : C.surface }}>
                   <td style={table.td}>
                     <input type="checkbox" checked={sel} onChange={() => toggleOne(c.id)} style={{ accentColor: C.accent }} />
@@ -604,9 +618,17 @@ export default function Cambios() {
                   <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec }}>
                     {c.producto.sku}
                   </td>
-                  <td style={{ ...table.td, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}
-                      title={c.producto.nombre}>
-                    {c.producto.nombre}
+                  <td style={{ ...table.td, maxWidth: 220, fontWeight: 500 }}>
+                    <span
+                      onClick={() => setNombreExpandido(nombreExpandido === c.id ? null : c.id)}
+                      style={{
+                        display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        cursor: 'pointer', userSelect: 'none', color: C.accent,
+                      }}
+                      title="Click para ver detalle"
+                    >
+                      {c.producto.nombre}
+                    </span>
                   </td>
                   <td style={{ ...table.td, fontSize: 12, whiteSpace: 'nowrap' }}>
                     {formatoVenta(c) !== '—' ? (
@@ -768,6 +790,49 @@ export default function Cambios() {
                     </td>
                   )}
                 </tr>
+                {nombreExpandido === c.id && (() => {
+                  const vari      = variacion(c);
+                  const sugerido  = c.precioSugerido ?? null;
+                  const conIva    = sugerido != null ? Math.round(sugerido * 1.19) : null;
+                  const jsPrice   = c.producto?.precioVenta?.precio ?? null;
+                  const cols = [
+                    { label: 'SKU',             valor: c.producto.sku },
+                    { label: 'Nombre',          valor: c.producto.nombre },
+                    { label: 'Formato',         valor: formatoVenta(c) },
+                    { label: 'Proveedor',       valor: provNombre(c) || '—' },
+                    { label: 'Marca',           valor: c.producto.marca || '—' },
+                    { label: 'Costo anterior',  valor: c.costoAnterior != null ? fmt(c.costoAnterior) : '—' },
+                    { label: 'Costo neto',      valor: fmt(c.costoNuevo) },
+                    { label: 'Variación',       valor: vari != null ? `${Number(vari) > 0 ? '+' : ''}${vari}%` : '—' },
+                    { label: 'Precio JS',       valor: jsPrice != null ? fmt(jsPrice) : '—' },
+                    { label: 'P. Sugerido',     valor: sugerido != null ? fmt(sugerido) : '—' },
+                    { label: 'P. Sugerido + IVA', valor: conIva != null ? fmt(conIva) : '—' },
+                  ];
+                  const colSpan = estado === 'aprobado' || estado === 'publicado' ? 13 : 12;
+                  return (
+                    <tr key={`exp-${c.id}`}>
+                      <td colSpan={colSpan} style={{ padding: '0 0 0 0', borderBottom: `1px solid ${C.border}` }}>
+                        <div style={{
+                          display: 'flex', flexWrap: 'wrap', gap: 0,
+                          background: C.accentLight, borderTop: `2px solid ${C.accent}`,
+                          padding: '10px 16px',
+                        }}>
+                          {cols.map(({ label, valor }) => (
+                            <div key={label} style={{ flex: '1 1 auto', minWidth: 90, padding: '4px 12px 4px 0' }}>
+                              <div style={{ fontSize: 10, fontWeight: 600, color: C.accent, fontFamily: F.sans, letterSpacing: '0.04em', marginBottom: 2 }}>
+                                {label.toUpperCase()}
+                              </div>
+                              <div style={{ fontSize: 12, color: C.text, fontFamily: F.sans, fontWeight: 500 }}>
+                                {valor}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })()}
+                </>
               );
             })}
           </tbody>
