@@ -530,7 +530,7 @@ export default function Cambios() {
 
               return (
                 <>
-                <tr key={c.id} onClick={() => setNombreExpandido(nombreExpandido === c.id ? null : c.id)} style={{ background: sel ? C.rowSelected : C.surface, cursor: 'pointer' }}>
+                <tr key={c.id} onClick={e => { e.stopPropagation(); setNombreExpandido(nombreExpandido === c.id ? null : c.id); }} style={{ background: sel ? C.rowSelected : C.surface, cursor: 'pointer' }}>
                   <td style={table.td} onClick={e => e.stopPropagation()}>
                     <input type="checkbox" checked={sel} onChange={() => toggleOne(c.id)} style={{ accentColor: C.accent }} />
                   </td>

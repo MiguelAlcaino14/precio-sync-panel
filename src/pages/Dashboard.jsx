@@ -529,7 +529,7 @@ export default function Dashboard() {
 
                 return (
                   <>
-                  <tr key={p.id} onClick={() => setProductoExpandido(productoExpandido === p.id ? null : p.id)} style={{ background: C.surface, cursor: 'pointer' }}
+                  <tr key={p.id} onClick={e => { e.stopPropagation(); setProductoExpandido(productoExpandido === p.id ? null : p.id); }} style={{ background: C.surface, cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = C.surfaceHover || '#f8fafc'}
                     onMouseLeave={e => e.currentTarget.style.background = C.surface}
                   >
