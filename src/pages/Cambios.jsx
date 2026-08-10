@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { C, F, shadow, fmt, table, btn } from '../theme';
 import { apiFetch } from '../api';
-
-const OPCIONES_PAGINA = [10, 25, 50, 100];
+import Paginacion from '../components/Paginacion';
 
 const ESTADOS = [
   { value: 'pendiente', label: 'Pendientes' },
@@ -22,6 +21,8 @@ export default function Cambios() {
   const [porPagina, setPorPagina]           = useState(25);
   const [filtroProv, setFiltroProv]         = useState(null);
   const [filtroVariacion, setFiltroVariacion] = useState(null); // null | 'sube' | 'baja'
+  const [filtroTema, setFiltroTema]         = useState(null); // null | 'aseo' | 'libreria' | 'alimentos'
+  const [ordenCosto, setOrdenCosto]         = useState(null); // null | 'asc' | 'desc'
   const [busqueda, setBusqueda]             = useState('');
   const [alertCounts, setAlertCounts]       = useState({ pendiente: 0, aprobado: 0 });
   const [todosProveedores, setTodosProveedores] = useState([]);
@@ -55,6 +56,8 @@ export default function Cambios() {
         setResultPublicar(null);
         setPagina(1);
         setFiltroProv(null);
+        setFiltroTema(null);
+        setOrdenCosto(null);
         setBusqueda('');
       })
       .catch(() => {});
@@ -67,6 +70,7 @@ export default function Cambios() {
   const q = busqueda.trim().toLowerCase();
   const cambiosFilt = cambios
     .filter(c => !filtroProv || provNombre(c) === filtroProv)
+    .filter(c => !filtroTema || c.producto?.proveedor?.tema === filtroTema)
     .filter(c => {
       if (!filtroVariacion) return true;
       const pct = c.costoAnterior ? (c.costoNuevo - c.costoAnterior) / c.costoAnterior * 100 : null;
@@ -77,7 +81,11 @@ export default function Cambios() {
     .filter(c => !q ||
       c.producto.sku.toLowerCase().includes(q) ||
       c.producto.nombre.toLowerCase().includes(q)
-    );
+    )
+    .sort((a, b) => {
+      if (!ordenCosto) return 0;
+      return ordenCosto === 'asc' ? a.costoNuevo - b.costoNuevo : b.costoNuevo - a.costoNuevo;
+    });
   const totalPaginas = Math.ceil(cambiosFilt.length / porPagina) || 1;
   const paginaActual = Math.min(pagina, totalPaginas);
   const inicio       = (paginaActual - 1) * porPagina;
@@ -435,6 +443,35 @@ export default function Cambios() {
         </div>
       )}
 
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginRight: 2 }}>
+          CATEGORÍA
+        </span>
+        {[
+          { value: null,        label: 'Todas' },
+          { value: 'aseo',      label: 'Aseo' },
+          { value: 'libreria',  label: 'Librería' },
+          { value: 'alimentos', label: 'Alimentos' },
+        ].map(({ value, label }) => {
+          const activo = filtroTema === value;
+          return (
+            <button
+              key={String(value)}
+              onClick={() => { setFiltroTema(value); setPagina(1); }}
+              style={{
+                ...btn.outline, padding: '5px 12px', fontSize: 12,
+                fontWeight: activo ? 700 : 500,
+                background: activo ? C.accent : C.surface,
+                color: activo ? '#fff' : C.text,
+                border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginRight: 2 }}>
           VARIACIÓN
@@ -449,6 +486,31 @@ export default function Cambios() {
             <button
               key={String(value)}
               onClick={() => { setFiltroVariacion(value); setPagina(1); }}
+              style={{
+                ...btn.outline, padding: '5px 12px', fontSize: 12,
+                fontWeight: activo ? 700 : 500,
+                background: activo ? C.accent : C.surface,
+                color: activo ? '#fff' : C.text,
+                border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+        <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginLeft: 8, marginRight: 2 }}>
+          COSTO
+        </span>
+        {[
+          { value: null,   label: 'Sin orden' },
+          { value: 'desc', label: '↓ Mayor' },
+          { value: 'asc',  label: '↑ Menor' },
+        ].map(({ value, label }) => {
+          const activo = ordenCosto === value;
+          return (
+            <button
+              key={String(value)}
+              onClick={() => { setOrdenCosto(value); setPagina(1); }}
               style={{
                 ...btn.outline, padding: '5px 12px', fontSize: 12,
                 fontWeight: activo ? 700 : 500,
@@ -795,65 +857,6 @@ export default function Cambios() {
   );
 }
 
-function Paginacion({ paginaActual, totalPaginas, onChange, porPagina, onCambiarPorPagina }) {
-  const pagesArr = Array.from({ length: totalPaginas }, (_, i) => i + 1)
-    .filter(n => n === 1 || n === totalPaginas || Math.abs(n - paginaActual) <= 2)
-    .reduce((acc, n, i, arr) => {
-      if (i > 0 && n - arr[i - 1] > 1) acc.push('…');
-      acc.push(n);
-      return acc;
-    }, []);
-
-  const navBtn = (disabled) => ({
-    cursor: disabled ? 'default' : 'pointer', padding: '6px 11px', fontSize: 13, fontWeight: 500,
-    borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface,
-    color: C.text, fontFamily: F.sans, opacity: disabled ? 0.4 : 1,
-  });
-
-  const selectStyle = {
-    padding: '5px 8px', fontSize: 12, fontFamily: F.sans, borderRadius: 6,
-    border: `1px solid ${C.border}`, background: C.surface, color: C.text, cursor: 'pointer',
-  };
-
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 12, color: C.textSec, fontFamily: F.sans }}>Mostrar</span>
-        <select style={selectStyle} value={porPagina} onChange={e => onCambiarPorPagina(Number(e.target.value))}>
-          {OPCIONES_PAGINA.map(n => <option key={n} value={n}>{n}</option>)}
-        </select>
-        <span style={{ fontSize: 12, color: C.textSec, fontFamily: F.sans }}>por página</span>
-      </div>
-      {totalPaginas > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button onClick={() => onChange(1)} disabled={paginaActual === 1} style={{ ...navBtn(paginaActual === 1), padding: '6px 10px' }}>«</button>
-          <button onClick={() => onChange(p => Math.max(1, p - 1))} disabled={paginaActual === 1} style={{ ...navBtn(paginaActual === 1), padding: '6px 12px' }}>‹</button>
-          {pagesArr.map((n, i) =>
-            n === '…' ? (
-              <span key={`e-${i}`} style={{ padding: '0 4px', color: C.textMuted, fontSize: 13 }}>…</span>
-            ) : (
-              <button
-                key={n}
-                onClick={() => onChange(n)}
-                style={{
-                  ...navBtn(false), padding: '6px 11px',
-                  fontWeight: n === paginaActual ? 700 : 500,
-                  background: n === paginaActual ? C.accent : C.surface,
-                  color: n === paginaActual ? '#fff' : C.text,
-                  border: n === paginaActual ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
-                }}
-              >
-                {n}
-              </button>
-            )
-          )}
-          <button onClick={() => onChange(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas} style={{ ...navBtn(paginaActual === totalPaginas), padding: '6px 12px' }}>›</button>
-          <button onClick={() => onChange(totalPaginas)} disabled={paginaActual === totalPaginas} style={{ ...navBtn(paginaActual === totalPaginas), padding: '6px 10px' }}>»</button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function ResultadoPublicacion({ resultado, onClose }) {
   if (resultado.error) {

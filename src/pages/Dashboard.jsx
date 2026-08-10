@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { C, F, shadow, fmt, table } from '../theme';
 import { apiFetch } from '../api';
 import PageHeader from '../components/PageHeader';
+import Paginacion from '../components/Paginacion';
 
 const POR_PAGINA = 6;
 
@@ -38,6 +39,8 @@ export default function Dashboard() {
   const [totalProductos, setTotalProductos]     = useState(0);
   const [totalPaginasLista, setTotalPaginasLista] = useState(1);
   const [paginaLista, setPaginaLista]           = useState(1);
+  const [ordenCosto, setOrdenCosto]             = useState(null); // null | 'asc' | 'desc'
+  const [porPaginaLista, setPorPaginaLista]     = useState(25);
 
   useEffect(() => {
     apiFetch('/proveedores')
@@ -87,7 +90,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (vista !== 'lista') return;
     cargarProductos();
-  }, [vista, busqueda, filtroTema, proveedorIdLista, paginaLista]); // eslint-disable-line
+  }, [vista, busqueda, filtroTema, proveedorIdLista, paginaLista, porPaginaLista]); // eslint-disable-line
 
   const proveedoresFiltrados = (busqueda.trim() ? busquedaProducto : proveedores)
     .filter(p => !filtroTema || p.tema === filtroTema);
@@ -171,7 +174,7 @@ export default function Dashboard() {
   async function cargarProductos() {
     setLoadingProductos(true);
     try {
-      const params = new URLSearchParams({ page: paginaLista, limit: 50 });
+      const params = new URLSearchParams({ page: paginaLista, limit: porPaginaLista });
       if (busqueda)         params.set('q',           busqueda);
       if (filtroTema)       params.set('tema',         filtroTema);
       if (proveedorIdLista) params.set('proveedorId',  proveedorIdLista);
@@ -323,6 +326,7 @@ export default function Dashboard() {
         })}
 
         {vista === 'lista' && (
+          <>
           <select
             value={proveedorIdLista}
             onChange={e => setProveedorIdLista(e.target.value)}
@@ -335,6 +339,31 @@ export default function Dashboard() {
             <option value="">Todos los proveedores</option>
             {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </select>
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginLeft: 4 }}>COSTO</span>
+          {[
+            { value: null,   label: 'Sin orden' },
+            { value: 'desc', label: '↓ Mayor' },
+            { value: 'asc',  label: '↑ Menor' },
+          ].map(({ value, label }) => {
+            const activo = ordenCosto === value;
+            return (
+              <button
+                key={String(value)}
+                onClick={() => setOrdenCosto(value)}
+                style={{
+                  ...btn.outline, padding: '5px 12px', fontSize: 12,
+                  fontWeight: activo ? 700 : 500,
+                  background: activo ? C.accent : C.surface,
+                  color: activo ? '#fff' : C.text,
+                  border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+                  cursor: 'pointer',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+          </>
         )}
 
         <div style={{ position: 'relative', marginLeft: 'auto' }}>
@@ -481,7 +510,12 @@ export default function Dashboard() {
                 </td></tr>
               )}
 
-              {!loadingProductos && productos.map(p => {
+              {!loadingProductos && [...productos].sort((a, b) => {
+                if (!ordenCosto) return 0;
+                return ordenCosto === 'asc'
+                  ? (a.ultimoCosto ?? 0) - (b.ultimoCosto ?? 0)
+                  : (b.ultimoCosto ?? 0) - (a.ultimoCosto ?? 0);
+              }).map(p => {
                 const cat = p.categoria;
                 const formatoLabel = cat === 'caja'
                   ? `Caja${p.unidadesCaja ? ` · ${p.unidadesCaja}u` : ''}`
@@ -527,29 +561,13 @@ export default function Dashboard() {
             </tbody>
           </table>
 
-          {/* Paginación lista */}
-          {totalPaginasLista > 1 && (
-            <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 12, color: C.textSec, fontFamily: F.sans }}>
-                Página {paginaLista} de {totalPaginasLista} · {totalProductos} productos
-              </span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => setPaginaLista(p => Math.max(1, p - 1))} disabled={paginaLista === 1}
-                  style={{ cursor: paginaLista === 1 ? 'default' : 'pointer', padding: '5px 10px', fontSize: 13, borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontFamily: F.sans, opacity: paginaLista === 1 ? 0.4 : 1 }}>
-                  ‹
-                </button>
-                <button onClick={() => setPaginaLista(p => Math.min(totalPaginasLista, p + 1))} disabled={paginaLista === totalPaginasLista}
-                  style={{ cursor: paginaLista === totalPaginasLista ? 'default' : 'pointer', padding: '5px 10px', fontSize: 13, borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontFamily: F.sans, opacity: paginaLista === totalPaginasLista ? 0.4 : 1 }}>
-                  ›
-                </button>
-              </div>
-            </div>
-          )}
-          {totalPaginasLista === 1 && totalProductos > 0 && (
-            <div style={{ padding: '10px 20px', borderTop: `1px solid ${C.border}` }}>
-              <span style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>{totalProductos} productos</span>
-            </div>
-          )}
+          <Paginacion
+            paginaActual={paginaLista}
+            totalPaginas={totalPaginasLista}
+            onChange={setPaginaLista}
+            porPagina={porPaginaLista}
+            onCambiarPorPagina={n => { setPorPaginaLista(n); setPaginaLista(1); }}
+          />
         </div>
       )}
     </div>
@@ -787,13 +805,13 @@ function ProductosModal({ proveedor, onClose }) {
   const [loading, setLoading]     = useState(true);
   const [q, setQ]                 = useState('');
   const [page, setPage]           = useState(1);
+  const [porPagina, setPorPagina] = useState(25);
   const [inputQ, setInputQ]       = useState('');
-  const LIMIT = 50;
   const debounceRef = useRef(null);
 
-  const cargar = useCallback((query, pg) => {
+  const cargar = useCallback((query, pg, limit) => {
     setLoading(true);
-    const params = new URLSearchParams({ page: pg, limit: LIMIT });
+    const params = new URLSearchParams({ page: pg, limit: limit ?? 25 });
     if (query) params.set('q', query);
     apiFetch(`/proveedores/${proveedor.id}/productos?${params}`)
       .then(r => r.json())
@@ -805,7 +823,7 @@ function ProductosModal({ proveedor, onClose }) {
       .finally(() => setLoading(false));
   }, [proveedor.id]);
 
-  useEffect(() => { cargar(q, page); }, [q, page, cargar]);
+  useEffect(() => { cargar(q, page, porPagina); }, [q, page, porPagina, cargar]);
 
   function handleQ(val) {
     setInputQ(val);
@@ -813,7 +831,7 @@ function ProductosModal({ proveedor, onClose }) {
     debounceRef.current = setTimeout(() => { setQ(val.trim()); setPage(1); }, 300);
   }
 
-  const totalPaginas = Math.ceil(total / LIMIT) || 1;
+  const totalPaginas = Math.ceil(total / porPagina) || 1;
 
   return (
     <div style={{
@@ -909,23 +927,15 @@ function ProductosModal({ proveedor, onClose }) {
         </div>
 
         {/* Paginación */}
-        {totalPaginas > 1 && (
-          <div style={{ padding: '12px 24px', borderTop: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ fontSize: 12, color: C.textSec, fontFamily: F.sans }}>
-              Página {page} de {totalPaginas}
-            </span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                style={{ cursor: page === 1 ? 'default' : 'pointer', padding: '5px 10px', fontSize: 13, borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontFamily: F.sans, opacity: page === 1 ? 0.4 : 1 }}>
-                ‹
-              </button>
-              <button onClick={() => setPage(p => Math.min(totalPaginas, p + 1))} disabled={page === totalPaginas}
-                style={{ cursor: page === totalPaginas ? 'default' : 'pointer', padding: '5px 10px', fontSize: 13, borderRadius: 6, border: `1px solid ${C.border}`, background: C.surface, color: C.text, fontFamily: F.sans, opacity: page === totalPaginas ? 0.4 : 1 }}>
-                ›
-              </button>
-            </div>
-          </div>
-        )}
+        <div style={{ padding: '0 20px' }}>
+          <Paginacion
+            paginaActual={page}
+            totalPaginas={totalPaginas}
+            onChange={setPage}
+            porPagina={porPagina}
+            onCambiarPorPagina={n => { setPorPagina(n); setPage(1); }}
+          />
+        </div>
       </div>
     </div>
   );
