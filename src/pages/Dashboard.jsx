@@ -292,7 +292,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="filter-row" style={{ display: 'flex', gap: 6, marginBottom: 20, alignItems: 'center' }}>
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 16px', marginBottom: 20, boxShadow: shadow.sm, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {vista === 'cuadro' && TEMAS.map(t => {
           const activo = filtroTema === t.value;
           const count  = t.value === null ? proveedores.length : proveedores.filter(p => p.tema === t.value).length;
@@ -307,7 +307,7 @@ export default function Dashboard() {
                 fontWeight: 600,
                 borderRadius: 6,
                 border: activo ? 'none' : `1px solid ${C.border}`,
-                background: activo ? C.accent : C.surface,
+                background: activo ? C.accent : '#f1f5f9',
                 color: activo ? '#ffffff' : C.textSec,
                 fontFamily: F.sans,
                 display: 'flex',
@@ -333,9 +333,7 @@ export default function Dashboard() {
           );
         })}
 
-        {vista === 'lista' && null}
-
-        <div style={{ position: 'relative', marginLeft: 'auto' }}>
+        <div style={{ position: 'relative', flex: '1 1 160px', maxWidth: 280 }}>
           <svg
             width="14" height="14" fill="none" viewBox="0 0 24 24"
             stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
@@ -349,15 +347,16 @@ export default function Dashboard() {
             value={busqueda}
             onChange={e => { setBusqueda(e.target.value); setVisibles(POR_PAGINA); }}
             style={{
-              padding: '6px 28px 6px 30px',
-              fontSize: 12,
+              padding: '7px 28px 7px 30px',
+              fontSize: 13,
               fontFamily: F.sans,
               color: C.text,
               background: C.surface,
               border: `1px solid ${C.border}`,
               borderRadius: 6,
               outline: 'none',
-              width: 260,
+              width: '100%',
+              boxSizing: 'border-box',
             }}
           />
           {busqueda && (
@@ -372,8 +371,30 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Switch cuadro / lista */}
-        <div style={{ display: 'flex', gap: 2, background: C.border, borderRadius: 6, padding: 2 }}>
+        {vista === 'lista' && (
+          <>
+            <select value={filtroTema ?? ''} onChange={e => { setFiltroTema(e.target.value || null); setPaginaLista(1); }}
+              style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+              <option value="">Todas las categorías</option>
+              <option value="aseo">Aseo</option>
+              <option value="libreria">Librería</option>
+              <option value="alimentos">Alimentos</option>
+            </select>
+            <select value={proveedorIdLista} onChange={e => setProveedorIdLista(e.target.value)}
+              style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+              <option value="">Todos los proveedores</option>
+              {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </select>
+            <select value={ordenCosto ?? ''} onChange={e => setOrdenCosto(e.target.value || null)}
+              style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+              <option value="">Sin orden por costo</option>
+              <option value="desc">↓ Mayor costo</option>
+              <option value="asc">↑ Menor costo</option>
+            </select>
+          </>
+        )}
+
+        <div style={{ display: 'flex', gap: 2, background: C.border, borderRadius: 6, padding: 2, marginLeft: 'auto' }}>
           {['cuadro', 'lista'].map(v => (
             <button
               key={v}
@@ -446,39 +467,6 @@ export default function Dashboard() {
             )}
           </>
         )
-      )}
-
-      {vista === 'lista' && (
-        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 16px', marginBottom: 8, boxShadow: shadow.sm, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 280 }}>
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
-              style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: C.textMuted, pointerEvents: 'none' }}>
-              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input type="text" placeholder="Buscar SKU o producto…" value={busqueda} onChange={e => { setBusqueda(e.target.value); setVisibles(POR_PAGINA); }}
-              style={{ padding: '7px 28px 7px 30px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, width: '100%', boxSizing: 'border-box', outline: 'none' }} />
-            {busqueda && <button onClick={() => { setBusqueda(''); setVisibles(POR_PAGINA); }} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: C.textMuted, fontSize: 15, lineHeight: 1, padding: 2 }}>×</button>}
-          </div>
-          <select value={filtroTema ?? ''} onChange={e => { setFiltroTema(e.target.value || null); setPaginaLista(1); }}
-            style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
-            <option value="">Todas las categorías</option>
-            {TEMAS.map(t => {
-              const count = proveedores.filter(p => p.tema === t.value).length;
-              return <option key={t.value} value={t.value}>{t.label} ({count})</option>;
-            })}
-          </select>
-          <select value={proveedorIdLista} onChange={e => setProveedorIdLista(e.target.value)}
-            style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
-            <option value="">Todos los proveedores</option>
-            {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-          </select>
-          <select value={ordenCosto ?? ''} onChange={e => setOrdenCosto(e.target.value || null)}
-            style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
-            <option value="">Sin orden por costo</option>
-            <option value="desc">↓ Mayor costo</option>
-            <option value="asc">↑ Menor costo</option>
-          </select>
-        </div>
       )}
 
       {vista === 'lista' && (
