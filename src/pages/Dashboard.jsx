@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { C, F, shadow, fmt, table } from '../theme';
+import { C, F, shadow, fmt, table, btn } from '../theme';
 import { apiFetch } from '../api';
 import PageHeader from '../components/PageHeader';
 import Paginacion from '../components/Paginacion';
