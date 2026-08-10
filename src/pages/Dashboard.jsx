@@ -575,7 +575,7 @@ export default function Dashboard() {
                             {cols.map(({ label, valor }) => (
                               <div key={label} style={{ flex: '1 1 auto', minWidth: 90, padding: '4px 12px 4px 0' }}>
                                 <div style={{ fontSize: 10, fontWeight: 600, color: C.accent, fontFamily: F.sans, letterSpacing: '0.04em', marginBottom: 2 }}>{label.toUpperCase()}</div>
-                                <div style={{ fontSize: 12, color: C.text, fontFamily: F.sans, fontWeight: 500 }}>{valor}</div>
+                                <div style={{ fontSize: 12, color: C.text, fontFamily: F.sans, fontWeight: 500, overflowWrap: 'break-word', wordBreak: 'break-word' }}>{valor}</div>
                               </div>
                             ))}
                           </div>

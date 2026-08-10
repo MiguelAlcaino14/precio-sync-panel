@@ -736,7 +736,7 @@ export default function Cambios() {
                               <div style={{ fontSize: 10, fontWeight: 600, color: C.accent, fontFamily: F.sans, letterSpacing: '0.04em', marginBottom: 2 }}>
                                 {label.toUpperCase()}
                               </div>
-                              <div style={{ fontSize: 12, color: C.text, fontFamily: F.sans, fontWeight: 500 }}>
+                              <div style={{ fontSize: 12, color: C.text, fontFamily: F.sans, fontWeight: 500, overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                                 {valor}
                               </div>
                             </div>
