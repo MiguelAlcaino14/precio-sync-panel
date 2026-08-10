@@ -293,7 +293,7 @@ export default function Dashboard() {
       </div>
 
       <div className="filter-row" style={{ display: 'flex', gap: 6, marginBottom: 20, alignItems: 'center' }}>
-        {TEMAS.map(t => {
+        {vista === 'cuadro' && TEMAS.map(t => {
           const activo = filtroTema === t.value;
           const count  = t.value === null ? proveedores.length : proveedores.filter(p => p.tema === t.value).length;
           return (
@@ -459,6 +459,14 @@ export default function Dashboard() {
               style={{ padding: '7px 28px 7px 30px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, width: '100%', boxSizing: 'border-box', outline: 'none' }} />
             {busqueda && <button onClick={() => { setBusqueda(''); setVisibles(POR_PAGINA); }} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: C.textMuted, fontSize: 15, lineHeight: 1, padding: 2 }}>×</button>}
           </div>
+          <select value={filtroTema ?? ''} onChange={e => { setFiltroTema(e.target.value || null); setPaginaLista(1); }}
+            style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+            <option value="">Todas las categorías</option>
+            {TEMAS.map(t => {
+              const count = proveedores.filter(p => p.tema === t.value).length;
+              return <option key={t.value} value={t.value}>{t.label} ({count})</option>;
+            })}
+          </select>
           <select value={proveedorIdLista} onChange={e => setProveedorIdLista(e.target.value)}
             style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
             <option value="">Todos los proveedores</option>
@@ -521,17 +529,13 @@ export default function Dashboard() {
 
                 return (
                   <>
-                  <tr key={p.id} style={{ background: C.surface }}
+                  <tr key={p.id} onClick={() => setProductoExpandido(productoExpandido === p.id ? null : p.id)} style={{ background: C.surface, cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = C.surfaceHover || '#f8fafc'}
                     onMouseLeave={e => e.currentTarget.style.background = C.surface}
                   >
                     <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec, whiteSpace: 'nowrap', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.sku}</td>
                     <td style={{ ...table.td, maxWidth: 320, fontWeight: 500 }}>
-                      <span
-                        onClick={e => { e.stopPropagation(); setProductoExpandido(productoExpandido === p.id ? null : p.id); }}
-                        style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', color: C.accent }}
-                        title="Click para ver detalle"
-                      >
+                      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {p.nombre}
                       </span>
                     </td>
@@ -577,7 +581,7 @@ export default function Dashboard() {
                       { label: 'P. Sugerido + IVA', valor: conIva != null ? fmt(conIva) : '—' },
                     ];
                     return (
-                      <tr key={`exp-${p.id}`}>
+                      <tr key={`exp-${p.id}`} onClick={e => e.stopPropagation()}>
                         <td colSpan={9} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', background: C.accentLight, borderTop: `2px solid ${C.accent}`, padding: '10px 16px' }}>
                             {cols.map(({ label, valor }) => (

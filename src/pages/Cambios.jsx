@@ -530,22 +530,15 @@ export default function Cambios() {
 
               return (
                 <>
-                <tr key={c.id} style={{ background: sel ? C.rowSelected : C.surface }}>
-                  <td style={table.td}>
+                <tr key={c.id} onClick={() => setNombreExpandido(nombreExpandido === c.id ? null : c.id)} style={{ background: sel ? C.rowSelected : C.surface, cursor: 'pointer' }}>
+                  <td style={table.td} onClick={e => e.stopPropagation()}>
                     <input type="checkbox" checked={sel} onChange={() => toggleOne(c.id)} style={{ accentColor: C.accent }} />
                   </td>
                   <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec }}>
                     {c.producto.sku}
                   </td>
                   <td style={{ ...table.td, maxWidth: 320, fontWeight: 500 }}>
-                    <span
-                      onClick={e => { e.stopPropagation(); setNombreExpandido(nombreExpandido === c.id ? null : c.id); }}
-                      style={{
-                        display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        cursor: 'pointer', userSelect: 'none', color: C.accent,
-                      }}
-                      title="Click para ver detalle"
-                    >
+                    <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {c.producto.nombre}
                     </span>
                   </td>
@@ -643,6 +636,7 @@ export default function Cambios() {
                           type="number"
                           value={preciosEdit[c.id] ?? c.precioSugerido ?? ''}
                           onChange={e => setPreciosEdit(p => ({ ...p, [c.id]: Number(e.target.value) }))}
+                          onClick={e => e.stopPropagation()}
                           style={{
                             width: 110, padding: '5px 8px',
                             background: C.surfaceHover,
@@ -677,7 +671,7 @@ export default function Cambios() {
                     <td style={{ ...table.td, textAlign: 'center' }}>
                       {estado === 'aprobado' && (
                         <button
-                          onClick={() => revertir([c.id])}
+                          onClick={e => { e.stopPropagation(); revertir([c.id]); }}
                           disabled={loading}
                           style={{
                             ...btn.outline, fontSize: 11, padding: '4px 10px',
@@ -692,7 +686,8 @@ export default function Cambios() {
                       )}
                       {estado === 'publicado' && (
                         <button
-                          onClick={() => {
+                          onClick={e => {
+                            e.stopPropagation();
                             const precioActual = c.producto?.precioVenta?.precio ?? c.precioSugerido ?? null;
                             setEditandoPrecio({ productoId: c.productoId, sku: c.producto.sku, nombre: c.producto.nombre, precioActual });
                             setEditandoValor(String(precioActual ?? ''));
@@ -729,7 +724,7 @@ export default function Cambios() {
                   ];
                   const colSpan = estado === 'aprobado' || estado === 'publicado' ? 13 : 12;
                   return (
-                    <tr key={`exp-${c.id}`}>
+                    <tr key={`exp-${c.id}`} onClick={e => e.stopPropagation()}>
                       <td colSpan={colSpan} style={{ padding: '0 0 0 0', borderBottom: `1px solid ${C.border}` }}>
                         <div style={{
                           display: 'flex', flexWrap: 'wrap', gap: 0,
