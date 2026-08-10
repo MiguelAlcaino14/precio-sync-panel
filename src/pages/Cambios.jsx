@@ -31,7 +31,6 @@ export default function Cambios() {
   const [editandoValor, setEditandoValor]   = useState('');
   const [editandoLoading, setEditandoLoading] = useState(false);
   const [nombreExpandido, setNombreExpandido] = useState(null); // cambio.id | null
-  const nombreExpandidoRef                    = useRef(null);
 
   useEffect(() => {
     Promise.all([
@@ -67,13 +66,9 @@ export default function Cambios() {
 
   useEffect(() => {
     if (!nombreExpandido) return;
-    const handler = (e) => {
-      if (nombreExpandidoRef.current && !nombreExpandidoRef.current.contains(e.target)) {
-        setNombreExpandido(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const handler = () => setNombreExpandido(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
   }, [nombreExpandido]);
 
   const provNombre   = c => c.archivo?.proveedor?.nombre ?? c.producto?.proveedor?.nombre;
@@ -433,111 +428,10 @@ export default function Cambios() {
       </div>
 
 
-      {proveedores.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans }}>
-            PROVEEDOR
-          </span>
-          <select
-            value={filtroProv ?? ''}
-            onChange={e => { setFiltroProv(e.target.value || null); setPagina(1); }}
-            style={{
-              padding: '6px 10px', fontSize: 12, fontFamily: F.sans,
-              border: `1px solid ${C.border}`, borderRadius: 6,
-              background: C.surface, color: C.text, cursor: 'pointer', outline: 'none',
-            }}
-          >
-            <option value="">Todos ({cambios.length})</option>
-            {proveedores.map(p => {
-              const count = cambios.filter(c => provNombre(c) === p).length;
-              return <option key={p} value={p}>{p} ({count})</option>;
-            })}
-          </select>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginRight: 2 }}>
-          CATEGORÍA
-        </span>
-        {[
-          { value: null,        label: 'Todas' },
-          { value: 'aseo',      label: 'Aseo' },
-          { value: 'libreria',  label: 'Librería' },
-          { value: 'alimentos', label: 'Alimentos' },
-        ].map(({ value, label }) => {
-          const activo = filtroTema === value;
-          return (
-            <button
-              key={String(value)}
-              onClick={() => { setFiltroTema(value); setPagina(1); }}
-              style={{
-                ...btn.outline, padding: '5px 12px', fontSize: 12,
-                fontWeight: activo ? 700 : 500,
-                background: activo ? C.accent : C.surface,
-                color: activo ? '#fff' : C.text,
-                border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginRight: 2 }}>
-          VARIACIÓN
-        </span>
-        {[
-          { value: null,   label: 'Todas' },
-          { value: 'sube', label: '▲ Sube' },
-          { value: 'baja', label: '▼ Baja' },
-        ].map(({ value, label }) => {
-          const activo = filtroVariacion === value;
-          return (
-            <button
-              key={String(value)}
-              onClick={() => { setFiltroVariacion(value); setPagina(1); }}
-              style={{
-                ...btn.outline, padding: '5px 12px', fontSize: 12,
-                fontWeight: activo ? 700 : 500,
-                background: activo ? C.accent : C.surface,
-                color: activo ? '#fff' : C.text,
-                border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-        <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginLeft: 8, marginRight: 2 }}>
-          COSTO
-        </span>
-        {[
-          { value: null,   label: 'Sin orden' },
-          { value: 'desc', label: '↓ Mayor' },
-          { value: 'asc',  label: '↑ Menor' },
-        ].map(({ value, label }) => {
-          const activo = ordenCosto === value;
-          return (
-            <button
-              key={String(value)}
-              onClick={() => { setOrdenCosto(value); setPagina(1); }}
-              style={{
-                ...btn.outline, padding: '5px 12px', fontSize: 12,
-                fontWeight: activo ? 700 : 500,
-                background: activo ? C.accent : C.surface,
-                color: activo ? '#fff' : C.text,
-                border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-        <div style={{ position: 'relative', marginLeft: 'auto' }}>
-          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 16px', marginBottom: 16, boxShadow: shadow.sm, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        {/* Búsqueda */}
+        <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 280 }}>
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
             style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: C.textMuted, pointerEvents: 'none' }}>
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
@@ -545,25 +439,50 @@ export default function Cambios() {
             type="text"
             value={busqueda}
             onChange={e => { setBusqueda(e.target.value); setPagina(1); }}
-            placeholder="Buscar por SKU o nombre..."
-            style={{
-              padding: '6px 30px 6px 28px', fontSize: 13, fontFamily: F.sans,
-              border: `1px solid ${C.border}`, borderRadius: 6,
-              background: C.surface, color: C.text,
-              width: 260, outline: 'none',
-            }}
+            placeholder="Buscar por SKU o nombre…"
+            style={{ padding: '7px 28px 7px 30px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, width: '100%', boxSizing: 'border-box', outline: 'none' }}
           />
           {busqueda && (
-            <button
-              onClick={() => { setBusqueda(''); setPagina(1); }}
-              style={{
-                position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)',
-                border: 'none', background: 'none', cursor: 'pointer',
-                color: C.textMuted, fontSize: 15, lineHeight: 1, padding: 2,
-              }}
-            >×</button>
+            <button onClick={() => { setBusqueda(''); setPagina(1); }} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: C.textMuted, fontSize: 15, lineHeight: 1, padding: 2 }}>×</button>
           )}
         </div>
+
+        {/* Proveedor */}
+        {proveedores.length > 0 && (
+          <select value={filtroProv ?? ''} onChange={e => { setFiltroProv(e.target.value || null); setPagina(1); }}
+            style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+            <option value="">Todos los proveedores</option>
+            {proveedores.map(p => {
+              const count = cambios.filter(c => provNombre(c) === p).length;
+              return <option key={p} value={p}>{p} ({count})</option>;
+            })}
+          </select>
+        )}
+
+        {/* Categoría */}
+        <select value={filtroTema ?? ''} onChange={e => { setFiltroTema(e.target.value || null); setPagina(1); }}
+          style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+          <option value="">Todas las categorías</option>
+          <option value="aseo">Aseo</option>
+          <option value="libreria">Librería</option>
+          <option value="alimentos">Alimentos</option>
+        </select>
+
+        {/* Variación */}
+        <select value={filtroVariacion ?? ''} onChange={e => { setFiltroVariacion(e.target.value || null); setPagina(1); }}
+          style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+          <option value="">Todas las variaciones</option>
+          <option value="sube">▲ Sube</option>
+          <option value="baja">▼ Baja</option>
+        </select>
+
+        {/* Orden costo */}
+        <select value={ordenCosto ?? ''} onChange={e => { setOrdenCosto(e.target.value || null); setPagina(1); }}
+          style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+          <option value="">Sin orden por costo</option>
+          <option value="desc">↓ Mayor costo</option>
+          <option value="asc">↑ Menor costo</option>
+        </select>
       </div>
 
       <div className="scroll-x" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflowX: 'auto', overflowY: 'hidden', boxShadow: shadow.sm }}>
@@ -579,8 +498,8 @@ export default function Cambios() {
                   style={{ accentColor: C.accent }}
                 />
               </th>
-              <th style={table.th}>SKU</th>
-              <th style={table.th}>Producto</th>
+              <th style={{ ...table.th, width: 70 }}>SKU</th>
+              <th style={{ ...table.th, width: 320 }}>Producto</th>
               <th style={table.th}>Formato de venta</th>
               <th style={table.th}>Proveedor</th>
               <th style={table.th}>Marca</th>
@@ -618,9 +537,9 @@ export default function Cambios() {
                   <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec }}>
                     {c.producto.sku}
                   </td>
-                  <td style={{ ...table.td, maxWidth: 220, fontWeight: 500 }}>
+                  <td style={{ ...table.td, maxWidth: 320, fontWeight: 500 }}>
                     <span
-                      onClick={() => setNombreExpandido(nombreExpandido === c.id ? null : c.id)}
+                      onClick={e => { e.stopPropagation(); setNombreExpandido(nombreExpandido === c.id ? null : c.id); }}
                       style={{
                         display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         cursor: 'pointer', userSelect: 'none', color: C.accent,

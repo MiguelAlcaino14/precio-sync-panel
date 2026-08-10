@@ -41,6 +41,14 @@ export default function Dashboard() {
   const [paginaLista, setPaginaLista]           = useState(1);
   const [ordenCosto, setOrdenCosto]             = useState(null); // null | 'asc' | 'desc'
   const [porPaginaLista, setPorPaginaLista]     = useState(25);
+  const [productoExpandido, setProductoExpandido] = useState(null); // producto.id | null
+
+  useEffect(() => {
+    if (!productoExpandido) return;
+    const handler = () => setProductoExpandido(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [productoExpandido]);
 
   useEffect(() => {
     apiFetch('/proveedores')
@@ -325,46 +333,7 @@ export default function Dashboard() {
           );
         })}
 
-        {vista === 'lista' && (
-          <>
-          <select
-            value={proveedorIdLista}
-            onChange={e => setProveedorIdLista(e.target.value)}
-            style={{
-              padding: '6px 10px', fontSize: 12, fontFamily: F.sans,
-              color: C.text, background: C.surface, border: `1px solid ${C.border}`,
-              borderRadius: 6, outline: 'none', cursor: 'pointer',
-            }}
-          >
-            <option value="">Todos los proveedores</option>
-            {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-          </select>
-          <span style={{ fontSize: 11, fontWeight: 600, color: C.textSec, fontFamily: F.sans, marginLeft: 4 }}>COSTO</span>
-          {[
-            { value: null,   label: 'Sin orden' },
-            { value: 'desc', label: '↓ Mayor' },
-            { value: 'asc',  label: '↑ Menor' },
-          ].map(({ value, label }) => {
-            const activo = ordenCosto === value;
-            return (
-              <button
-                key={String(value)}
-                onClick={() => setOrdenCosto(value)}
-                style={{
-                  ...btn.outline, padding: '5px 12px', fontSize: 12,
-                  fontWeight: activo ? 700 : 500,
-                  background: activo ? C.accent : C.surface,
-                  color: activo ? '#fff' : C.text,
-                  border: activo ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
-                  cursor: 'pointer',
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-          </>
-        )}
+        {vista === 'lista' && null}
 
         <div style={{ position: 'relative', marginLeft: 'auto' }}>
           <svg
@@ -480,12 +449,37 @@ export default function Dashboard() {
       )}
 
       {vista === 'lista' && (
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 16px', marginBottom: 8, boxShadow: shadow.sm, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 280 }}>
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
+              style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: C.textMuted, pointerEvents: 'none' }}>
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar SKU o producto…" value={busqueda} onChange={e => { setBusqueda(e.target.value); setVisibles(POR_PAGINA); }}
+              style={{ padding: '7px 28px 7px 30px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, width: '100%', boxSizing: 'border-box', outline: 'none' }} />
+            {busqueda && <button onClick={() => { setBusqueda(''); setVisibles(POR_PAGINA); }} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: C.textMuted, fontSize: 15, lineHeight: 1, padding: 2 }}>×</button>}
+          </div>
+          <select value={proveedorIdLista} onChange={e => setProveedorIdLista(e.target.value)}
+            style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+            <option value="">Todos los proveedores</option>
+            {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+          </select>
+          <select value={ordenCosto ?? ''} onChange={e => setOrdenCosto(e.target.value || null)}
+            style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+            <option value="">Sin orden por costo</option>
+            <option value="desc">↓ Mayor costo</option>
+            <option value="asc">↑ Menor costo</option>
+          </select>
+        </div>
+      )}
+
+      {vista === 'lista' && (
         <div className="scroll-x" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflowX: 'auto', overflowY: 'hidden', boxShadow: shadow.sm }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans, minWidth: 900 }}>
             <thead>
               <tr>
-                <th style={table.th}>SKU</th>
-                <th style={table.th}>Producto</th>
+                <th style={{ ...table.th, width: 70 }}>SKU</th>
+                <th style={{ ...table.th, width: 320 }}>Producto</th>
                 <th style={table.th}>Formato</th>
                 <th style={table.th}>Proveedor</th>
                 <th style={table.th}>Marca</th>
@@ -526,12 +520,21 @@ export default function Dashboard() {
                 const formatoColor = cat === 'caja' ? '#1d4ed8' : cat === 'pallet' ? '#d97706' : C.textSec;
 
                 return (
+                  <>
                   <tr key={p.id} style={{ background: C.surface }}
                     onMouseEnter={e => e.currentTarget.style.background = C.surfaceHover || '#f8fafc'}
                     onMouseLeave={e => e.currentTarget.style.background = C.surface}
                   >
-                    <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec, whiteSpace: 'nowrap' }}>{p.sku}</td>
-                    <td style={{ ...table.td, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={p.nombre}>{p.nombre}</td>
+                    <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec, whiteSpace: 'nowrap', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.sku}</td>
+                    <td style={{ ...table.td, maxWidth: 320, fontWeight: 500 }}>
+                      <span
+                        onClick={e => { e.stopPropagation(); setProductoExpandido(productoExpandido === p.id ? null : p.id); }}
+                        style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', color: C.accent }}
+                        title="Click para ver detalle"
+                      >
+                        {p.nombre}
+                      </span>
+                    </td>
                     <td style={{ ...table.td, whiteSpace: 'nowrap' }}>
                       {formatoLabel
                         ? <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: formatoBg, color: formatoColor }}>{formatoLabel}</span>
@@ -556,6 +559,39 @@ export default function Dashboard() {
                       }
                     </td>
                   </tr>
+                  {productoExpandido === p.id && (() => {
+                    const conIva = p.precioSugerido != null ? Math.round(p.precioSugerido * 1.19) : null;
+                    const formatoLabel = p.categoria === 'caja'
+                      ? `Caja${p.unidadesCaja ? ` · ${p.unidadesCaja}u` : ''}`
+                      : p.categoria === 'pallet' ? 'Pallet'
+                      : p.categoria === 'unidad' ? 'Unidad' : '—';
+                    const cols = [
+                      { label: 'SKU',               valor: p.sku },
+                      { label: 'Nombre',            valor: p.nombre },
+                      { label: 'Formato',           valor: formatoLabel },
+                      { label: 'Proveedor',         valor: p.proveedor?.nombre || '—' },
+                      { label: 'Marca',             valor: p.marca || '—' },
+                      { label: 'Costo',             valor: p.ultimoCosto != null ? fmt(p.ultimoCosto) : '—' },
+                      { label: 'Precio JS',         valor: p.precioJS != null ? fmt(p.precioJS) : '—' },
+                      { label: 'P. Sugerido',       valor: p.precioSugerido != null ? fmt(p.precioSugerido) : '—' },
+                      { label: 'P. Sugerido + IVA', valor: conIva != null ? fmt(conIva) : '—' },
+                    ];
+                    return (
+                      <tr key={`exp-${p.id}`}>
+                        <td colSpan={9} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', background: C.accentLight, borderTop: `2px solid ${C.accent}`, padding: '10px 16px' }}>
+                            {cols.map(({ label, valor }) => (
+                              <div key={label} style={{ flex: '1 1 auto', minWidth: 90, padding: '4px 12px 4px 0' }}>
+                                <div style={{ fontSize: 10, fontWeight: 600, color: C.accent, fontFamily: F.sans, letterSpacing: '0.04em', marginBottom: 2 }}>{label.toUpperCase()}</div>
+                                <div style={{ fontSize: 12, color: C.text, fontFamily: F.sans, fontWeight: 500 }}>{valor}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })()}
+                  </>
                 );
               })}
             </tbody>
