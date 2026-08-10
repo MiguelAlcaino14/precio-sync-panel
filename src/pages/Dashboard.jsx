@@ -571,9 +571,9 @@ export default function Dashboard() {
                     return (
                       <tr key={`exp-${p.id}`} onClick={e => e.stopPropagation()}>
                         <td colSpan={9} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', background: C.accentLight, borderTop: `2px solid ${C.accent}`, padding: '10px 16px' }}>
+                          <div style={{ display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', background: C.accentLight, borderTop: `2px solid ${C.accent}`, padding: '10px 16px' }}>
                             {cols.map(({ label, valor }) => (
-                              <div key={label} style={{ flex: '1 1 auto', minWidth: 90, padding: '4px 12px 4px 0' }}>
+                              <div key={label} style={{ flex: '0 0 auto', minWidth: 90, padding: '4px 12px 4px 0' }}>
                                 <div style={{ fontSize: 10, fontWeight: 600, color: C.accent, fontFamily: F.sans, letterSpacing: '0.04em', marginBottom: 2 }}>{label.toUpperCase()}</div>
                                 <div style={{ fontSize: 12, color: C.text, fontFamily: F.sans, fontWeight: 500, overflowWrap: 'break-word', wordBreak: 'break-word' }}>{valor}</div>
                               </div>

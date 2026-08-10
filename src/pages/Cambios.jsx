@@ -534,7 +534,7 @@ export default function Cambios() {
                   <td style={table.td} onClick={e => e.stopPropagation()}>
                     <input type="checkbox" checked={sel} onChange={() => toggleOne(c.id)} style={{ accentColor: C.accent }} />
                   </td>
-                  <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec }}>
+                  <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec, maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {c.producto.sku}
                   </td>
                   <td style={{ ...table.td, maxWidth: 320, fontWeight: 500 }}>
@@ -727,12 +727,12 @@ export default function Cambios() {
                     <tr key={`exp-${c.id}`} onClick={e => e.stopPropagation()}>
                       <td colSpan={colSpan} style={{ padding: '0 0 0 0', borderBottom: `1px solid ${C.border}` }}>
                         <div style={{
-                          display: 'flex', flexWrap: 'wrap', gap: 0,
+                          display: 'flex', flexWrap: 'nowrap', overflowX: 'auto', gap: 0,
                           background: C.accentLight, borderTop: `2px solid ${C.accent}`,
                           padding: '10px 16px',
                         }}>
                           {cols.map(({ label, valor }) => (
-                            <div key={label} style={{ flex: '1 1 auto', minWidth: 90, padding: '4px 12px 4px 0' }}>
+                            <div key={label} style={{ flex: '0 0 auto', minWidth: 90, padding: '4px 12px 4px 0' }}>
                               <div style={{ fontSize: 10, fontWeight: 600, color: C.accent, fontFamily: F.sans, letterSpacing: '0.04em', marginBottom: 2 }}>
                                 {label.toUpperCase()}
                               </div>
