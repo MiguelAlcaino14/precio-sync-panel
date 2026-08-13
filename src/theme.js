@@ -24,7 +24,7 @@ export const C = {
 
 export const F = {
   sans: '"Segoe UI", system-ui, -apple-system, sans-serif',
-  mono: '"Courier New", Courier, monospace',
+  mono: '"Segoe UI", system-ui, -apple-system, sans-serif',
 };
 
 export const shadow = {

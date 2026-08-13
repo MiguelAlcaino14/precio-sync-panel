@@ -3,10 +3,11 @@ import { C, F, shadow, table, btn, form as formStyles } from '../theme';
 import { apiFetch } from '../api';
 
 const TIPOS = [
-  { value: 'proveedor', label: 'Proveedor' },
-  { value: 'marca',     label: 'Marca' },
-  { value: 'categoria', label: 'Categoría' },
-  { value: 'producto',  label: 'Producto específico' },
+  { value: 'proveedor',       label: 'Proveedor' },
+  { value: 'marca',           label: 'Marca' },
+  { value: 'categoria',       label: 'Categoría' },
+  { value: 'producto',        label: 'Grupo' },
+  { value: 'producto_precio', label: 'Producto específico' },
 ];
 
 const CATEGORIAS = [
@@ -19,16 +20,19 @@ const vacio = {
   nombre: '', tipo: 'proveedor', descuentoPct: '',
   proveedorId: '', marca: '', categoria: 'libreria', productoIds: [],
   fechaInicio: '', fechaFin: '',
+  productoEspecifico: null, // { id, sku, nombre, ultimoCosto, precioSugerido }
+  nuevoPrecio: '',
 };
 
 function badgeTipo(tipo) {
   const colores = {
-    proveedor: { bg: '#dbeafe', color: '#1d4ed8' },
-    marca:     { bg: '#d1fae5', color: '#059669' },
-    categoria: { bg: '#fef3c7', color: '#d97706' },
-    producto:  { bg: '#ede9fe', color: '#7c3aed' },
+    proveedor:       { bg: '#dbeafe', color: '#1d4ed8' },
+    marca:           { bg: '#d1fae5', color: '#059669' },
+    categoria:       { bg: '#fef3c7', color: '#d97706' },
+    producto:        { bg: '#ede9fe', color: '#7c3aed' },
+    producto_precio: { bg: '#fce7f3', color: '#be185d' },
   };
-  const etiquetas = { proveedor: 'Proveedor', marca: 'Marca', categoria: 'Categoría', producto: 'Producto' };
+  const etiquetas = { proveedor: 'Proveedor', marca: 'Marca', categoria: 'Categoría', producto: 'Grupo', producto_precio: 'Producto específico' };
   const s = colores[tipo] || { bg: C.border, color: C.textSec };
   return (
     <span style={{
@@ -49,6 +53,11 @@ function targetLabel(o) {
     if (!prods.length) return o.producto ? `${o.producto.sku} — ${o.producto.nombre}` : '—';
     const primera = `${prods[0].sku} — ${prods[0].nombre}`;
     return prods.length > 1 ? `${primera} y ${prods.length - 1} más` : primera;
+  }
+  if (o.tipo === 'producto_precio') {
+    const prods = (o.productosOferta || []).map(p => p.producto).filter(Boolean);
+    if (!prods.length) return '—';
+    return `${prods[0].sku} — ${prods[0].nombre}`;
   }
   return '—';
 }
@@ -92,7 +101,6 @@ export default function Ofertas() {
   }
 
   function abrirEditar(o) {
-    // Construir lista de productos seleccionados desde productosOferta (junction) o productoId legacy
     let productosSeleccionados = [];
     if (o.productosOferta?.length > 0) {
       productosSeleccionados = o.productosOferta
@@ -103,16 +111,26 @@ export default function Ofertas() {
       productosSeleccionados = [{ id: o.producto.id, sku: o.producto.sku, nombre: o.producto.nombre }];
     }
 
+    let productoEspecifico = null;
+    if (o.tipo === 'producto_precio') {
+      const prods = (o.productosOferta || []).map(p => p.producto).filter(Boolean);
+      if (prods.length > 0) {
+        productoEspecifico = { id: prods[0].id, sku: prods[0].sku, nombre: prods[0].nombre, ultimoCosto: null, precioSugerido: null };
+      }
+    }
+
     setForm({
-      nombre:       o.nombre,
-      tipo:         o.tipo,
-      descuentoPct: String(o.descuentoPct),
-      proveedorId:  o.proveedorId  || '',
-      marca:        o.marca        || '',
-      categoria:    o.categoria    || 'libreria',
-      productoIds:  productosSeleccionados,
-      fechaInicio:  o.fechaInicio ? o.fechaInicio.slice(0, 10) : '',
-      fechaFin:     o.fechaFin    ? o.fechaFin.slice(0, 10)    : '',
+      nombre:             o.nombre,
+      tipo:               o.tipo,
+      descuentoPct:       String(o.descuentoPct),
+      proveedorId:        o.proveedorId  || '',
+      marca:              o.marca        || '',
+      categoria:          o.categoria    || 'libreria',
+      productoIds:        productosSeleccionados,
+      fechaInicio:        o.fechaInicio ? o.fechaInicio.slice(0, 10) : '',
+      fechaFin:           o.fechaFin    ? o.fechaFin.slice(0, 10)    : '',
+      productoEspecifico,
+      nuevoPrecio:        '',
     });
     setSkuBusqueda('');
     setEditandoId(o.id);
@@ -137,6 +155,16 @@ export default function Ofertas() {
     } catch {}
   }
 
+  async function buscarProductosConPrecio(q) {
+    if (q.length < 2) { setSkuOpts([]); return; }
+    try {
+      const res  = await apiFetch(`/productos?q=${encodeURIComponent(q)}&limit=10`);
+      const data = await res.json();
+      setSkuOpts(Array.isArray(data.productos) ? data.productos : []);
+      setMostrarSkus(true);
+    } catch {}
+  }
+
   function agregarProducto(p) {
     setForm(f => {
       if (f.productoIds.some(x => x.id === p.id)) return f;
@@ -155,11 +183,35 @@ export default function Ofertas() {
       setFeedback({ ok: false, texto: 'El nombre es obligatorio.' });
       return;
     }
-    const descuento = parseFloat(form.descuentoPct);
-    if (!form.descuentoPct || isNaN(descuento) || descuento < 1 || descuento > 99) {
-      setFeedback({ ok: false, texto: 'El descuento debe estar entre 1 y 99.' });
-      return;
+
+    let descuento;
+    if (form.tipo === 'producto_precio') {
+      if (!form.productoEspecifico) {
+        setFeedback({ ok: false, texto: 'Selecciona un producto.' }); return;
+      }
+      if (form.nuevoPrecio && form.productoEspecifico.precioSugerido) {
+        const np = parseFloat(form.nuevoPrecio);
+        const ps = form.productoEspecifico.precioSugerido;
+        descuento = ((ps - np) / ps) * 100;
+        if (isNaN(descuento) || descuento <= 0 || descuento >= 100) {
+          setFeedback({ ok: false, texto: 'El nuevo precio debe ser menor al precio sugerido.' }); return;
+        }
+      } else if (form.descuentoPct) {
+        descuento = parseFloat(form.descuentoPct);
+        if (isNaN(descuento) || descuento < 1 || descuento > 99) {
+          setFeedback({ ok: false, texto: 'Descuento inválido.' }); return;
+        }
+      } else {
+        setFeedback({ ok: false, texto: 'Ingresa el nuevo precio del producto.' }); return;
+      }
+    } else {
+      descuento = parseFloat(form.descuentoPct);
+      if (!form.descuentoPct || isNaN(descuento) || descuento < 1 || descuento > 99) {
+        setFeedback({ ok: false, texto: 'El descuento debe estar entre 1 y 99.' });
+        return;
+      }
     }
+
     if (form.tipo === 'proveedor' && !form.proveedorId) {
       setFeedback({ ok: false, texto: 'Selecciona un proveedor.' });
       return;
@@ -177,13 +229,14 @@ export default function Ofertas() {
       return;
     }
     const body = {
-      nombre:      form.nombre,
-      tipo:        form.tipo,
-      descuentoPct: parseFloat(form.descuentoPct),
-      proveedorId:  form.tipo === 'proveedor' ? form.proveedorId   : undefined,
-      marca:        form.tipo === 'marca'     ? form.marca          : undefined,
-      categoria:    form.tipo === 'categoria' ? form.categoria      : undefined,
-      productoIds:  form.tipo === 'producto'  ? form.productoIds.map(p => p.id) : undefined,
+      nombre:       form.nombre,
+      tipo:         form.tipo,
+      descuentoPct: form.tipo === 'producto_precio' ? Math.round(descuento) : descuento,
+      proveedorId:  form.tipo === 'proveedor'       ? form.proveedorId                      : undefined,
+      marca:        form.tipo === 'marca'            ? form.marca                            : undefined,
+      categoria:    form.tipo === 'categoria'        ? form.categoria                        : undefined,
+      productoIds:  form.tipo === 'producto'         ? form.productoIds.map(p => p.id)
+                  : form.tipo === 'producto_precio'  ? [form.productoEspecifico.id]          : undefined,
       fechaInicio:  form.fechaInicio || undefined,
       fechaFin:     form.fechaFin    || undefined,
     };
@@ -296,140 +349,31 @@ export default function Ofertas() {
           {editandoId ? 'Editar oferta' : 'Nueva oferta'}
         </p>
 
+        {/* Fila 1: campos fijos siempre visibles */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', rowGap: 10 }}>
-          {/* Nombre */}
           <div style={formStyles.field}>
             <label style={formStyles.label}>Nombre</label>
             <input style={{ ...formStyles.input, width: 200 }} value={form.nombre} placeholder="Ej: Liquidación julio"
               onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
           </div>
 
-          {/* Tipo */}
           <div style={formStyles.field}>
             <label style={formStyles.label}>Aplica a</label>
             <select style={{ ...formStyles.input, cursor: 'pointer', width: 170 }} value={form.tipo}
-              onChange={e => { setSkuBusqueda(''); setSkuOpts([]); setMostrarSkus(false); setForm(f => ({ ...f, tipo: e.target.value, proveedorId: '', marca: '', categoria: 'libreria', productoIds: [] })); }}>
+              onChange={e => { setSkuBusqueda(''); setSkuOpts([]); setMostrarSkus(false); setForm(f => ({ ...f, tipo: e.target.value, proveedorId: '', marca: '', categoria: 'libreria', productoIds: [], productoEspecifico: null, nuevoPrecio: '', descuentoPct: '' })); }}>
               {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
 
-          {/* Target según tipo */}
-          {form.tipo === 'proveedor' && (
+          {form.tipo !== 'producto_precio' && (
             <div style={formStyles.field}>
-              <label style={formStyles.label}>Proveedor</label>
-              <select style={{ ...formStyles.input, cursor: 'pointer', width: 200 }} value={form.proveedorId}
-                onChange={e => setForm(f => ({ ...f, proveedorId: e.target.value }))}>
-                <option value="">Seleccionar...</option>
-                {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-              </select>
+              <label style={formStyles.label}>Descuento %</label>
+              <input style={{ ...formStyles.input, width: 90 }} type="number" min="1" max="100"
+                value={form.descuentoPct} placeholder="10"
+                onChange={e => setForm(f => ({ ...f, descuentoPct: e.target.value }))} />
             </div>
           )}
 
-          {form.tipo === 'marca' && (
-            <div style={formStyles.field}>
-              <label style={formStyles.label}>Marca</label>
-              {marcasDisp.length > 0 ? (
-                <select style={{ ...formStyles.input, cursor: 'pointer', width: 180 }} value={form.marca}
-                  onChange={e => setForm(f => ({ ...f, marca: e.target.value }))}>
-                  <option value="">Seleccionar...</option>
-                  {marcasDisp.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              ) : (
-                <input style={{ ...formStyles.input, width: 160 }} value={form.marca} placeholder="Ej: Torre"
-                  onChange={e => setForm(f => ({ ...f, marca: e.target.value }))} />
-              )}
-            </div>
-          )}
-
-          {form.tipo === 'categoria' && (
-            <div style={formStyles.field}>
-              <label style={formStyles.label}>Categoría</label>
-              <select style={{ ...formStyles.input, cursor: 'pointer', width: 140 }} value={form.categoria}
-                onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
-                {CATEGORIAS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
-            </div>
-          )}
-
-          {form.tipo === 'producto' && (
-            <div style={{ ...formStyles.field, width: '100%', marginTop: 4 }}>
-              <label style={formStyles.label}>Productos (SKU o nombre)</label>
-
-              {/* Chips de productos seleccionados */}
-              {form.productoIds.length > 0 && (
-                <div style={{
-                  display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6,
-                  maxHeight: 68, overflowY: 'auto',
-                  padding: '4px 6px', borderRadius: 6,
-                  background: '#f5f3ff', border: `1px solid #ddd6fe`,
-                }}>
-                  {form.productoIds.map(p => (
-                    <span key={p.id} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 4,
-                      padding: '2px 8px', borderRadius: 12, fontSize: 11,
-                      background: '#ede9fe', color: '#7c3aed', fontWeight: 500,
-                      whiteSpace: 'nowrap',
-                    }}>
-                      <span style={{ fontFamily: F.mono }}>{p.sku}</span>
-                      <button
-                        onMouseDown={e => { e.preventDefault(); quitarProducto(p.id); }}
-                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#7c3aed', padding: 0, lineHeight: 1, fontSize: 13 }}
-                      >×</button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Búsqueda */}
-              <div style={{ position: 'relative' }}>
-                <input
-                  ref={skuInputRef}
-                  style={{ ...formStyles.input, width: 240 }}
-                  value={skuBusqueda}
-                  placeholder="Buscar y agregar..."
-                  autoComplete="off"
-                  onChange={e => { setSkuBusqueda(e.target.value); buscarProductos(e.target.value); }}
-                  onFocus={() => { if (skuOpts.length > 0) setMostrarSkus(true); }}
-                  onBlur={() => setTimeout(() => setMostrarSkus(false), 150)}
-                />
-                {mostrarSkus && skuOpts.length > 0 && (
-                  <div
-                    onMouseDown={e => e.preventDefault()}
-                    style={{
-                      position: 'absolute', top: '100%', left: 0, zIndex: 100, minWidth: 320,
-                      background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
-                      boxShadow: shadow.sm, maxHeight: 200, overflowY: 'auto',
-                    }}>
-                    {skuOpts.map(p => {
-                      const yaAgregado = form.productoIds.some(x => x.id === p.id);
-                      return (
-                        <div key={p.sku} onMouseDown={() => { if (!yaAgregado) agregarProducto(p); }}
-                          style={{
-                            padding: '7px 12px', cursor: yaAgregado ? 'default' : 'pointer',
-                            fontSize: 12, borderBottom: `1px solid ${C.border}`,
-                            opacity: yaAgregado ? 0.45 : 1,
-                          }}>
-                          <span style={{ fontFamily: F.mono, fontWeight: 600 }}>{p.sku}</span>
-                          <span style={{ color: C.textSec, marginLeft: 8 }}>{p.nombre}</span>
-                          {yaAgregado && <span style={{ marginLeft: 8, color: C.textMuted, fontSize: 10 }}>ya agregado</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Descuento */}
-          <div style={formStyles.field}>
-            <label style={formStyles.label}>Descuento %</label>
-            <input style={{ ...formStyles.input, width: 90 }} type="number" min="1" max="100"
-              value={form.descuentoPct} placeholder="10"
-              onChange={e => setForm(f => ({ ...f, descuentoPct: e.target.value }))} />
-          </div>
-
-          {/* Fechas */}
           <div style={formStyles.field}>
             <label style={formStyles.label}>Desde *</label>
             <input required style={{ ...formStyles.input, width: 140 }} type="date" value={form.fechaInicio}
@@ -449,6 +393,207 @@ export default function Ofertas() {
               <button onClick={cancelar} style={btn.outline}>Cancelar</button>
             )}
           </div>
+        </div>
+
+        {/* Fila 2: target según tipo */}
+        <div style={{ marginTop: 12 }}>
+          {form.tipo === 'proveedor' && (
+            <div style={formStyles.field}>
+              <label style={formStyles.label}>Proveedor</label>
+              <select style={{ ...formStyles.input, cursor: 'pointer', width: 220 }} value={form.proveedorId}
+                onChange={e => setForm(f => ({ ...f, proveedorId: e.target.value }))}>
+                <option value="">Seleccionar...</option>
+                {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>
+            </div>
+          )}
+
+          {form.tipo === 'marca' && (
+            <div style={formStyles.field}>
+              <label style={formStyles.label}>Marca</label>
+              {marcasDisp.length > 0 ? (
+                <select style={{ ...formStyles.input, cursor: 'pointer', width: 200 }} value={form.marca}
+                  onChange={e => setForm(f => ({ ...f, marca: e.target.value }))}>
+                  <option value="">Seleccionar...</option>
+                  {marcasDisp.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              ) : (
+                <input style={{ ...formStyles.input, width: 180 }} value={form.marca} placeholder="Ej: Torre"
+                  onChange={e => setForm(f => ({ ...f, marca: e.target.value }))} />
+              )}
+            </div>
+          )}
+
+          {form.tipo === 'categoria' && (
+            <div style={formStyles.field}>
+              <label style={formStyles.label}>Categoría</label>
+              <select style={{ ...formStyles.input, cursor: 'pointer', width: 160 }} value={form.categoria}
+                onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}>
+                {CATEGORIAS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+          )}
+
+          {form.tipo === 'producto' && (
+            <div style={formStyles.field}>
+              <label style={formStyles.label}>Productos (SKU o nombre)</label>
+              {form.productoIds.length > 0 && (
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6,
+                  maxHeight: 68, overflowY: 'auto',
+                  padding: '4px 6px', borderRadius: 6,
+                  background: '#f5f3ff', border: `1px solid #ddd6fe`,
+                }}>
+                  {form.productoIds.map(p => (
+                    <span key={p.id} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '2px 8px', borderRadius: 12, fontSize: 11,
+                      background: '#ede9fe', color: '#7c3aed', fontWeight: 500,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {p.sku}
+                      <button
+                        onMouseDown={e => { e.preventDefault(); quitarProducto(p.id); }}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#7c3aed', padding: 0, lineHeight: 1, fontSize: 13 }}
+                      >×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div style={{ position: 'relative' }}>
+                <input
+                  ref={skuInputRef}
+                  style={{ ...formStyles.input, width: 260 }}
+                  value={skuBusqueda}
+                  placeholder="Buscar y agregar..."
+                  autoComplete="off"
+                  onChange={e => { setSkuBusqueda(e.target.value); buscarProductos(e.target.value); }}
+                  onFocus={() => { if (skuOpts.length > 0) setMostrarSkus(true); }}
+                  onBlur={() => setTimeout(() => setMostrarSkus(false), 150)}
+                />
+                {mostrarSkus && skuOpts.length > 0 && (
+                  <div onMouseDown={e => e.preventDefault()} style={{
+                    position: 'absolute', top: '100%', left: 0, zIndex: 100, minWidth: 320,
+                    background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
+                    boxShadow: shadow.sm, maxHeight: 200, overflowY: 'auto',
+                  }}>
+                    {skuOpts.map(p => {
+                      const yaAgregado = form.productoIds.some(x => x.id === p.id);
+                      return (
+                        <div key={p.sku} onMouseDown={() => { if (!yaAgregado) agregarProducto(p); }}
+                          style={{ padding: '7px 12px', cursor: yaAgregado ? 'default' : 'pointer', fontSize: 12, borderBottom: `1px solid ${C.border}`, opacity: yaAgregado ? 0.45 : 1 }}>
+                          <span style={{ fontWeight: 600 }}>{p.sku}</span>
+                          <span style={{ color: C.textSec, marginLeft: 8 }}>{p.nombre}</span>
+                          {yaAgregado && <span style={{ marginLeft: 8, color: C.textMuted, fontSize: 10 }}>ya agregado</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {form.tipo === 'producto_precio' && (
+            <div style={formStyles.field}>
+              <label style={formStyles.label}>Producto (SKU o nombre)</label>
+              {form.productoEspecifico ? (
+                <>
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 12px',
+                    borderRadius: 6, background: '#f5f3ff', border: '1px solid #ddd6fe',
+                  }}>
+                    <div style={{ flex: 1, display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginBottom: 2 }}>SKU</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#7c3aed' }}>{form.productoEspecifico.sku}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginBottom: 2 }}>Nombre</div>
+                        <div style={{ fontSize: 13, color: C.text }}>{form.productoEspecifico.nombre}</div>
+                      </div>
+                      {form.productoEspecifico.ultimoCosto > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginBottom: 2 }}>Costo</div>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>${form.productoEspecifico.ultimoCosto.toLocaleString('es-CL')}</div>
+                        </div>
+                      )}
+                      {form.productoEspecifico.precioSugerido > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, marginBottom: 2 }}>Precio sugerido</div>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>${form.productoEspecifico.precioSugerido.toLocaleString('es-CL')}</div>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onMouseDown={e => { e.preventDefault(); setForm(f => ({ ...f, productoEspecifico: null, nuevoPrecio: '', descuentoPct: '' })); setSkuBusqueda(''); }}
+                      style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#7c3aed', fontSize: 18, lineHeight: 1, padding: 0 }}
+                    >×</button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginTop: 10 }}>
+                    <div style={formStyles.field}>
+                      <label style={formStyles.label}>Nuevo precio</label>
+                      <input
+                        style={{ ...formStyles.input, width: 130 }}
+                        type="number" min="0"
+                        value={form.nuevoPrecio}
+                        placeholder="Ej: 4200"
+                        onChange={e => {
+                          const np = parseFloat(e.target.value);
+                          const ps = form.productoEspecifico?.precioSugerido;
+                          const pct = (ps && np > 0) ? Math.max(0, ((ps - np) / ps * 100)).toFixed(1) : '';
+                          setForm(f => ({ ...f, nuevoPrecio: e.target.value, descuentoPct: pct }));
+                        }}
+                      />
+                    </div>
+                    <div style={formStyles.field}>
+                      <label style={formStyles.label}>Descuento</label>
+                      <div style={{
+                        ...formStyles.input, width: 80,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: '#ede9fe', border: '1px solid #ddd6fe',
+                        color: '#7c3aed', fontWeight: 700, fontSize: 14,
+                      }}>
+                        {form.descuentoPct ? `${form.descuentoPct}%` : '—'}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ position: 'relative' }}>
+                  <input
+                    ref={skuInputRef}
+                    style={{ ...formStyles.input, width: 260 }}
+                    value={skuBusqueda}
+                    placeholder="Buscar SKU o nombre..."
+                    autoComplete="off"
+                    onChange={e => { setSkuBusqueda(e.target.value); buscarProductosConPrecio(e.target.value); }}
+                    onFocus={() => { if (skuOpts.length > 0) setMostrarSkus(true); }}
+                    onBlur={() => setTimeout(() => setMostrarSkus(false), 150)}
+                  />
+                  {mostrarSkus && skuOpts.length > 0 && (
+                    <div onMouseDown={e => e.preventDefault()} style={{
+                      position: 'absolute', top: '100%', left: 0, zIndex: 100, minWidth: 320,
+                      background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6,
+                      boxShadow: shadow.sm, maxHeight: 200, overflowY: 'auto',
+                    }}>
+                      {skuOpts.map(p => (
+                        <div key={p.sku || p.id} onMouseDown={() => {
+                          setForm(f => ({ ...f, productoEspecifico: p }));
+                          setSkuBusqueda(''); setSkuOpts([]); setMostrarSkus(false);
+                        }}
+                          style={{ padding: '7px 12px', cursor: 'pointer', fontSize: 12, borderBottom: `1px solid ${C.border}` }}>
+                          <span style={{ fontWeight: 600 }}>{p.sku}</span>
+                          <span style={{ color: C.textSec, marginLeft: 8 }}>{p.nombre}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
