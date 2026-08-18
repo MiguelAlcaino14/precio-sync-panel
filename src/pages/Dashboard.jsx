@@ -7,23 +7,6 @@ import Paginacion from '../components/Paginacion';
 
 const POR_PAGINA = 6;
 
-const normStr = s =>
-  String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-
-function sortByRelevancia(productos, q) {
-  if (!q) return productos;
-  const nq  = normStr(q);
-  const re  = new RegExp(`\\b${nq.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
-  const score = p => {
-    const n = normStr(p.nombre);
-    const s = normStr(p.sku);
-    if (n === nq || s === nq)                 return 0;
-    if (n.startsWith(nq) || s.startsWith(nq)) return 1;
-    if (re.test(n) || re.test(s))             return 2;
-    return 3;
-  };
-  return [...productos].sort((a, b) => score(a) - score(b));
-}
 
 const TEMAS = [
   { value: null,        label: 'Todos' },
@@ -207,7 +190,7 @@ export default function Dashboard() {
       const res  = await apiFetch(`/productos?${params}`);
       if (!res.ok) return;
       const data = await res.json();
-      setProductos(sortByRelevancia(data.productos || [], busqueda));
+      setProductos(data.productos || []);
       setTotalProductos(data.total || 0);
       setTotalPaginasLista(data.totalPaginas || 1);
     } catch {}
