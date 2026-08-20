@@ -384,20 +384,6 @@ export default function Proveedores() {
                     onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, [key]: e.target.value } }))} />
                 </div>
               ))}
-              <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
-                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 400 }}>
-                  <input type="checkbox" checked={form.configCampos.precioIncluyeIVA}
-                    onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, precioIncluyeIVA: e.target.checked } }))} />
-                  El precio en el Excel ya incluye IVA
-                </label>
-              </div>
-              {!form.configCampos.precioIncluyeIVA && (
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Factor IVA</label>
-                  <input style={inputStyle} type="number" step="0.01" value={form.configCampos.factorIVA} placeholder="1.19"
-                    onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, factorIVA: e.target.value } }))} />
-                </div>
-              )}
             </>)}
 
             {form.configTipo === 'pdf' && (<>
@@ -411,20 +397,6 @@ export default function Proveedores() {
                 <input style={inputStyle} value={form.configCampos.separadorMiles} placeholder="."
                   onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, separadorMiles: e.target.value } }))} />
               </div>
-              <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
-                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 400 }}>
-                  <input type="checkbox" checked={form.configCampos.precioIncluyeIVA}
-                    onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, precioIncluyeIVA: e.target.checked } }))} />
-                  El precio en el PDF ya incluye IVA
-                </label>
-              </div>
-              {!form.configCampos.precioIncluyeIVA && (
-                <div style={fieldStyle}>
-                  <label style={labelStyle}>Factor IVA</label>
-                  <input style={inputStyle} type="number" step="0.01" value={form.configCampos.factorIVA} placeholder="1.19"
-                    onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, factorIVA: e.target.value } }))} />
-                </div>
-              )}
             </>)}
           </div>
 
