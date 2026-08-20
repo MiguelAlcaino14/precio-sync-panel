@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [syncJS, setSyncJS]               = useState({ loading: false, resultado: null });
   const pollTimers = useRef({});
   const debounceRef = useRef(null);
+  const abortRef    = useRef(null);
 
   const [vista, setVista]                       = useState('cuadro');
   const [proveedorIdLista, setProveedorIdLista] = useState('');
@@ -98,7 +99,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (vista !== 'lista') return;
-    cargarProductos();
+    const delay = busqueda ? 300 : 0;
+    const timer = setTimeout(cargarProductos, delay);
+    return () => clearTimeout(timer);
   }, [vista, busqueda, filtroTema, proveedorIdLista, paginaLista, porPaginaLista]); // eslint-disable-line
 
   const proveedoresFiltrados = (busqueda.trim() ? busquedaProducto : proveedores)
@@ -181,20 +184,27 @@ export default function Dashboard() {
   }
 
   async function cargarProductos() {
+    if (abortRef.current) abortRef.current.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     setLoadingProductos(true);
     try {
       const params = new URLSearchParams({ page: paginaLista, limit: porPaginaLista });
       if (busqueda)         params.set('q',           busqueda);
       if (filtroTema)       params.set('tema',         filtroTema);
       if (proveedorIdLista) params.set('proveedorId',  proveedorIdLista);
-      const res  = await apiFetch(`/productos?${params}`);
-      if (!res.ok) return;
+      const res  = await apiFetch(`/productos?${params}`, { signal: ctrl.signal });
+      if (!res.ok || ctrl.signal.aborted) return;
       const data = await res.json();
+      if (ctrl.signal.aborted) return;
       setProductos(data.productos || []);
       setTotalProductos(data.total || 0);
       setTotalPaginasLista(data.totalPaginas || 1);
-    } catch {}
-    finally { setLoadingProductos(false); }
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    } finally {
+      if (!ctrl.signal.aborted) setLoadingProductos(false);
+    }
   }
 
   async function sincronizarJumpseller() {
