@@ -337,17 +337,17 @@ export default function Proveedores() {
                 <option value="ia">IA (automático — Excel y PDF)</option>
                 <option value="xlsx">Excel (columnas manuales)</option>
                 <option value="pdf">PDF (patrón manual)</option>
-                <option value="demarka">Demarka (parser especial)</option>
+                <option value="acco-brand">ACCO Brand (parser especial)</option>
                 <option value="cambiaso">Cambiaso (parser especial)</option>
-                <option value="winnex">Winnex (parser especial)</option>
-                <option value="rommel">Rommel (parser especial)</option>
+                <option value="carlos-gardy">Carlos Gardy (parser especial)</option>
                 <option value="chipro">Chipro (parser especial)</option>
+                <option value="demarka">Demarka (parser especial)</option>
+                <option value="engatel">Engatel (parser especial)</option>
                 <option value="libesa">Libesa (parser especial)</option>
                 <option value="pronobel">Pronobel (parser especial)</option>
-                <option value="acco-brand">Parser especial: ACCO Brand</option>
-                <option value="carlos-gardy">Parser especial: Carlos Gardy</option>
-                <option value="engatel">Parser especial: ENGATEL</option>
-                <option value="scai">Parser especial: SCAI</option>
+                <option value="rommel">Rommel (parser especial)</option>
+                <option value="scai">SCAI (parser especial)</option>
+                <option value="winnex">Winnex (parser especial)</option>
               </select>
             </div>
 
