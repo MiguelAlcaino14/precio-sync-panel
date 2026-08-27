@@ -111,6 +111,12 @@ const btnSecondary = {
   fontWeight: 500, borderRadius: 6, background: 'transparent', color: C.textSec, fontFamily: F.sans,
 };
 
+const menuItemStyle = {
+  display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'none',
+  padding: '9px 14px', fontSize: 13, fontFamily: F.sans, cursor: 'pointer',
+  color: C.text, transition: 'background 0.1s',
+};
+
 const PARSER_LABEL = {
   ia: { label: 'IA', bg: '#f0fdf4', color: '#059669' },
   xlsx: { label: 'Excel', bg: '#eff6ff', color: '#1d4ed8' },
@@ -145,14 +151,25 @@ export default function Proveedores() {
   const [reseteando, setReseteando]     = useState(null); // id o 'todos'
   const [mensajeReset, setMensajeReset] = useState('');
   const formRef = useRef(null);
+  const [busqueda, setBusqueda]         = useState('');
+  const [filtroTema, setFiltroTema]     = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [menuAbierto, setMenuAbierto]   = useState(null); // id del proveedor con menú abierto
   const [confirmModal, setConfirmModal] = useState(null);
   const showConfirm = (message, onConfirm, opts = {}) =>
     new Promise(resolve => setConfirmModal({ message, ...opts, onConfirm: () => { setConfirmModal(null); resolve(true); onConfirm?.(); }, onCancel: () => { setConfirmModal(null); resolve(false); } }));
 
-  const totalPaginas   = Math.ceil(proveedores.length / porPagina) || 1;
+  const proveedoresFilt = proveedores.filter(p => {
+    if (busqueda && !p.nombre.toLowerCase().includes(busqueda.toLowerCase()) && !p.slug.toLowerCase().includes(busqueda.toLowerCase())) return false;
+    if (filtroTema && p.tema !== filtroTema) return false;
+    if (filtroEstado === 'activo' && !p.activo) return false;
+    if (filtroEstado === 'inactivo' && p.activo) return false;
+    return true;
+  });
+  const totalPaginas   = Math.ceil(proveedoresFilt.length / porPagina) || 1;
   const paginaActual   = Math.min(pagina, totalPaginas);
   const inicio         = (paginaActual - 1) * porPagina;
-  const proveedoresPag = proveedores.slice(inicio, inicio + porPagina);
+  const proveedoresPag = proveedoresFilt.slice(inicio, inicio + porPagina);
 
   useEffect(() => { cargar(); }, []);
 
@@ -428,6 +445,16 @@ export default function Proveedores() {
                   onChange={e => setForm(f => ({ ...f, configCampos: { ...f.configCampos, separadorMiles: e.target.value } }))} />
               </div>
             </>)}
+
+            <div style={{ ...fieldStyle, gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Estado</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', width: 'fit-content' }}>
+                <input type="checkbox" checked={form.activo}
+                  onChange={e => setForm(f => ({ ...f, activo: e.target.checked }))}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }} />
+                <span style={{ fontSize: 13, color: C.text }}>Proveedor activo</span>
+              </label>
+            </div>
           </div>
 
           {error && <p style={{ margin: '0 0 12px', fontSize: 12, color: C.red, fontWeight: 500 }}>{error}</p>}
@@ -440,6 +467,44 @@ export default function Proveedores() {
           </div>
         </div>
       )}
+
+      {/* Barra de búsqueda y filtros */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          style={{ ...inputStyle, width: 220 }}
+          placeholder="Buscar por nombre o apodo…"
+          value={busqueda}
+          onChange={e => { setBusqueda(e.target.value); setPagina(1); }}
+        />
+        <select
+          style={{ ...inputStyle, width: 140, cursor: 'pointer' }}
+          value={filtroTema}
+          onChange={e => { setFiltroTema(e.target.value); setPagina(1); }}
+        >
+          <option value="">Todos los temas</option>
+          {TEMAS.map(t => <option key={t} value={t}>{TEMA_BADGE[t]?.label || t}</option>)}
+        </select>
+        <select
+          style={{ ...inputStyle, width: 140, cursor: 'pointer' }}
+          value={filtroEstado}
+          onChange={e => { setFiltroEstado(e.target.value); setPagina(1); }}
+        >
+          <option value="">Todos los estados</option>
+          <option value="activo">Activos</option>
+          <option value="inactivo">Inactivos</option>
+        </select>
+        {(busqueda || filtroTema || filtroEstado) && (
+          <button
+            style={{ ...btnSecondary, fontSize: 12, padding: '6px 12px' }}
+            onClick={() => { setBusqueda(''); setFiltroTema(''); setFiltroEstado(''); setPagina(1); }}
+          >
+            ✕ Limpiar
+          </button>
+        )}
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: C.textSec }}>
+          {proveedoresFilt.length} proveedor{proveedoresFilt.length !== 1 ? 'es' : ''}
+        </span>
+      </div>
 
       <div className="scroll-x" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: shadow.sm }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans }}>
@@ -527,26 +592,47 @@ export default function Proveedores() {
                       {p.activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
-                  <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => abrirEditar(p)} style={{ ...btnSecondary, padding: '4px 10px', fontSize: 12, marginRight: 6 }}>
-                      Editar
-                    </button>
-                    {p.driveFolderId && (
+                  <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap', position: 'relative' }}>
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
                       <button
-                        onClick={() => resetearDrive(p.id)}
-                        disabled={reseteando !== null}
-                        title="Reinicia el procesamiento de Drive para este proveedor"
-                        style={{ cursor: 'pointer', border: `1px solid ${C.red}`, padding: '4px 10px', fontSize: 12, fontWeight: 500, borderRadius: 5, background: 'transparent', color: C.red, fontFamily: F.sans, marginRight: 6 }}
+                        onClick={() => setMenuAbierto(menuAbierto === p.id ? null : p.id)}
+                        style={{ ...btnSecondary, padding: '4px 10px', fontSize: 14, fontWeight: 700, letterSpacing: 1 }}
+                        title="Acciones"
                       >
-                        {reseteando === p.id ? '…' : '↺'}
+                        ⋯
                       </button>
-                    )}
-                    <button
-                      onClick={() => toggleActivo(p)}
-                      style={{ cursor: 'pointer', border: `1px solid ${C.border}`, padding: '4px 10px', fontSize: 12, fontWeight: 500, borderRadius: 5, background: 'transparent', color: p.activo ? C.red : C.green, fontFamily: F.sans }}
-                    >
-                      {p.activo ? 'Desactivar' : 'Activar'}
-                    </button>
+                      {menuAbierto === p.id && (
+                        <div style={{
+                          position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 100,
+                          background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7,
+                          boxShadow: shadow.md, minWidth: 160, overflow: 'hidden',
+                        }}
+                          onMouseLeave={() => setMenuAbierto(null)}
+                        >
+                          <button
+                            style={menuItemStyle}
+                            onClick={() => { setMenuAbierto(null); abrirEditar(p); }}
+                          >
+                            ✏️ Editar
+                          </button>
+                          {p.driveFolderId && (
+                            <button
+                              style={{ ...menuItemStyle, color: C.red }}
+                              disabled={reseteando !== null}
+                              onClick={() => { setMenuAbierto(null); resetearDrive(p.id); }}
+                            >
+                              {reseteando === p.id ? '…' : '↺ Reiniciar Drive'}
+                            </button>
+                          )}
+                          <button
+                            style={{ ...menuItemStyle, color: p.activo ? C.red : C.green }}
+                            onClick={() => { setMenuAbierto(null); toggleActivo(p); }}
+                          >
+                            {p.activo ? '⏸ Desactivar' : '▶ Activar'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
