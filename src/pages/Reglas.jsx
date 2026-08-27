@@ -1,10 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { C, F, shadow, table, btn, form as formStyles } from '../theme';
 import { apiFetch } from '../api';
+import { ConfirmModal } from '../components/Modals';
 
 const vacioForm = { nombre: '', markupPct: '', sku: '', nombreContiene: '', proveedorId: '', marca: '', categoria: '', costoMin: '', costoMax: '' };
 
 export default function Reglas() {
+  const [confirmModal, setConfirmModal] = useState(null);
+  const showConfirm = (message, onConfirm, opts = {}) =>
+    new Promise(resolve => setConfirmModal({ message, ...opts, onConfirm: () => { setConfirmModal(null); resolve(true); onConfirm?.(); }, onCancel: () => { setConfirmModal(null); resolve(false); } }));
+
   const [reglas, setReglas]         = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [form, setForm]             = useState(vacioForm);
@@ -94,7 +99,8 @@ export default function Reglas() {
   async function eliminar(id) {
     const regla = reglas.find(r => r.id === id);
     const nombre = regla?.nombre || 'esta regla';
-    if (!window.confirm(`¿Eliminar "${nombre}"? Los productos que usan esta regla pasarán a la regla por defecto.`)) return;
+    const ok = await showConfirm(`¿Eliminar "${nombre}"? Los productos que usan esta regla pasarán a la regla por defecto.`, null, { confirmLabel: 'Eliminar', danger: true });
+    if (!ok) return;
     try {
       await apiFetch(`/reglas/${id}`, { method: 'DELETE' });
       setReglas(r => r.filter(x => x.id !== id));
@@ -138,6 +144,7 @@ export default function Reglas() {
 
   return (
     <div>
+      {confirmModal && <ConfirmModal {...confirmModal} />}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>
           Reglas de precio de venta

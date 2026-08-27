@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { C, F, shadow, fmt, table, btn } from '../theme';
 import { apiFetch } from '../api';
 import Paginacion from '../components/Paginacion';
+import { ConfirmModal, AlertModal } from '../components/Modals';
 
 const ESTADOS = [
   { value: 'pendiente', label: 'Pendientes' },
@@ -31,6 +32,12 @@ export default function Cambios() {
   const [editandoValor, setEditandoValor]   = useState('');
   const [editandoLoading, setEditandoLoading] = useState(false);
   const [nombreExpandido, setNombreExpandido] = useState(null); // cambio.id | null
+  const [confirmModal, setConfirmModal]       = useState(null); // { message, confirmLabel, danger, onConfirm }
+  const [alertModal, setAlertModal]           = useState(null); // { message, type }
+
+  const showConfirm = (message, onConfirm, { confirmLabel = 'Confirmar', danger = false } = {}) =>
+    new Promise(resolve => setConfirmModal({ message, confirmLabel, danger, onConfirm: () => { setConfirmModal(null); resolve(true); onConfirm?.(); }, onCancel: () => { setConfirmModal(null); resolve(false); } }));
+  const showAlert = (message, type = 'info') => setAlertModal({ message, type });
 
   useEffect(() => {
     Promise.all([
@@ -160,23 +167,25 @@ export default function Cambios() {
   async function aprobarTodo() {
     const ids = cambiosFilt.map(c => c.id);
     if (!ids.length) return;
-    if (!window.confirm(`¿Aprobar todos los ${ids.length} cambios pendientes? Esta acción no se puede deshacer.`)) return;
+    const ok = await showConfirm(`¿Aprobar todos los ${ids.length} cambios pendientes? Esta acción no se puede deshacer.`, null, { confirmLabel: 'Aprobar todo' });
+    if (!ok) return;
     await aprobar(ids);
   }
 
   async function recalcularTodos() {
-    if (!window.confirm('¿Recalcular los precios de TODOS los productos?\n\nEsto aplicará la fórmula actual (sin IVA) y generará cambios listos para publicar en JumpSeller.\n\nEsta acción no se puede deshacer.')) return;
+    const ok = await showConfirm('¿Recalcular los precios de TODOS los productos?\n\nEsto aplicará la fórmula actual (sin IVA) y generará cambios listos para publicar en JumpSeller.\n\nEsta acción no se puede deshacer.', null, { confirmLabel: 'Recalcular' });
+    if (!ok) return;
     setLoading(true);
     setResultPublicar(null);
     try {
       const res  = await apiFetch('/sync/recalcular-precios', { method: 'POST' });
       const data = await res.json();
-      if (data.error) { alert(`Error: ${data.error}`); return; }
-      alert(`Recálculo completado:\n• ${data.recalculados} precios actualizados\n• ${data.sinCambio} sin cambio\n• ${data.sinCosto} sin costo registrado\n\nCambia al filtro "Aprobados" para publicarlos en JumpSeller.`);
+      if (data.error) { showAlert(`Error: ${data.error}`, 'error'); return; }
+      showAlert(`Recálculo completado:\n• ${data.recalculados} precios actualizados\n• ${data.sinCambio} sin cambio\n• ${data.sinCosto} sin costo registrado\n\nCambia al filtro "Aprobados" para publicarlos en JumpSeller.`, 'success');
       setAlertCounts(a => ({ ...a, aprobado: a.aprobado + (data.recalculados ?? 0) }));
       setEstado('aprobado');
     } catch {
-      alert('Error de conexión con la API');
+      showAlert('Error de conexión con la API', 'error');
     } finally {
       setLoading(false);
     }
@@ -208,17 +217,18 @@ export default function Cambios() {
         method: 'POST',
         body:   JSON.stringify({ productoId: editandoPrecio.productoId, precio }),
       });
-      if (!res.ok) { alert('Error al guardar el precio'); return; }
+      if (!res.ok) { showAlert('Error al guardar el precio', 'error'); return; }
       setEditandoPrecio(null);
       setAlertCounts(a => ({ ...a, aprobado: a.aprobado + 1 }));
-    } catch { alert('Error de conexión'); }
+    } catch { showAlert('Error de conexión', 'error'); }
     finally { setEditandoLoading(false); }
   }
 
   async function limpiarPendientes() {
     const total = cambios.length;
     if (!total) return;
-    if (!window.confirm(`¿Eliminar los ${total} cambios pendientes? Úsalo solo para limpiar datos de prueba antes de importar archivos reales.`)) return;
+    const ok = await showConfirm(`¿Eliminar los ${total} cambios pendientes? Úsalo solo para limpiar datos de prueba antes de importar archivos reales.`, null, { confirmLabel: 'Eliminar', danger: true });
+    if (!ok) return;
     setLoading(true);
     try {
       await apiFetch('/cambios/limpiar', { method: 'POST' });
@@ -271,6 +281,8 @@ export default function Cambios() {
 
   return (
     <div>
+      {confirmModal && <ConfirmModal {...confirmModal} />}
+      {alertModal   && <AlertModal  {...alertModal} onClose={() => setAlertModal(null)} />}
       {(alertCounts.pendiente > 0 || alertCounts.aprobado > 0) && (
         <div style={{
           marginBottom: 20,

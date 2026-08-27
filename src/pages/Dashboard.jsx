@@ -4,6 +4,7 @@ import { C, F, shadow, fmt, table, btn } from '../theme';
 import { apiFetch } from '../api';
 import PageHeader from '../components/PageHeader';
 import Paginacion from '../components/Paginacion';
+import { ConfirmModal } from '../components/Modals';
 
 const POR_PAGINA = 6;
 
@@ -30,6 +31,10 @@ export default function Dashboard() {
   const [productosModal, setProductosModal] = useState(null);
   const navigate = useNavigate();
   const [syncJS, setSyncJS]               = useState({ loading: false, resultado: null });
+  const [confirmModal, setConfirmModal]   = useState(null);
+
+  const showConfirm = (message, onConfirm, opts = {}) =>
+    new Promise(resolve => setConfirmModal({ message, ...opts, onConfirm: () => { setConfirmModal(null); resolve(true); onConfirm?.(); }, onCancel: () => { setConfirmModal(null); resolve(false); } }));
   const pollTimers = useRef({});
   const debounceRef = useRef(null);
   const abortRef    = useRef(null);
@@ -208,7 +213,8 @@ export default function Dashboard() {
   }
 
   async function sincronizarJumpseller() {
-    if (!window.confirm('¿Sincronizar precios actuales desde JumpSeller? Esto actualizará el precio de venta base de todos los productos encontrados.')) return;
+    const ok = await showConfirm('¿Sincronizar precios actuales desde JumpSeller? Esto actualizará el precio de venta base de todos los productos encontrados.', null, { confirmLabel: 'Sincronizar' });
+    if (!ok) return;
     setSyncJS({ loading: true, resultado: null });
     try {
       const res  = await apiFetch('/sync/jumpseller', { method: 'POST' });
@@ -221,6 +227,7 @@ export default function Dashboard() {
 
   return (
     <div>
+      {confirmModal && <ConfirmModal {...confirmModal} />}
       {productosModal && (
         <ProductosModal
           proveedor={productosModal.proveedor}

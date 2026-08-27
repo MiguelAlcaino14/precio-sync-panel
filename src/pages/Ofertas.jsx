@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { C, F, shadow, table, btn, form as formStyles } from '../theme';
 import { apiFetch } from '../api';
+import { ConfirmModal } from '../components/Modals';
 
 const TIPOS = [
   { value: 'proveedor',       label: 'Proveedor' },
@@ -80,6 +81,9 @@ export default function Ofertas() {
   const [cargando,     setCargando]     = useState(false);
   const [publicando,   setPublicando]   = useState({});
   const skuInputRef = useRef(null);
+  const [confirmModal, setConfirmModal] = useState(null);
+  const showConfirm = (message, onConfirm, opts = {}) =>
+    new Promise(resolve => setConfirmModal({ message, ...opts, onConfirm: () => { setConfirmModal(null); resolve(true); onConfirm?.(); }, onCancel: () => { setConfirmModal(null); resolve(false); } }));
 
   useEffect(() => {
     cargar();
@@ -290,7 +294,8 @@ export default function Ofertas() {
   }
 
   async function revertirOferta(o) {
-    if (!window.confirm(`¿Revertir la oferta "${o.nombre}" en JumpSeller? Se restaurarán los precios originales.`)) return;
+    const ok = await showConfirm(`¿Revertir la oferta "${o.nombre}" en JumpSeller? Se restaurarán los precios originales.`, null, { confirmLabel: 'Revertir' });
+    if (!ok) return;
     setPublicando(p => ({ ...p, [o.id]: true }));
     setFeedback(null);
     try {
@@ -307,7 +312,8 @@ export default function Ofertas() {
   }
 
   async function eliminar(o) {
-    if (!window.confirm(`¿Eliminar oferta "${o.nombre}"?`)) return;
+    const ok = await showConfirm(`¿Eliminar oferta "${o.nombre}"?`, null, { confirmLabel: 'Eliminar', danger: true });
+    if (!ok) return;
     try {
       await apiFetch(`/ofertas/${o.id}`, { method: 'DELETE' });
       setOfertas(prev => prev.filter(x => x.id !== o.id));
@@ -319,6 +325,7 @@ export default function Ofertas() {
 
   return (
     <div>
+      {confirmModal && <ConfirmModal {...confirmModal} />}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: '-0.02em' }}>
           Ofertas

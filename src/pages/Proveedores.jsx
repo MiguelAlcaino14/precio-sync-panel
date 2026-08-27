@@ -3,6 +3,7 @@ import { C, F, shadow } from '../theme';
 import { apiFetch } from '../api';
 import PageHeader from '../components/PageHeader';
 import Paginacion from '../components/Paginacion';
+import { ConfirmModal } from '../components/Modals';
 
 const TEMAS = ['libreria', 'alimentos', 'aseo'];
 
@@ -127,6 +128,9 @@ export default function Proveedores() {
   const [porPagina, setPorPagina]       = useState(10);
   const [reseteando, setReseteando]     = useState(null); // id o 'todos'
   const [mensajeReset, setMensajeReset] = useState('');
+  const [confirmModal, setConfirmModal] = useState(null);
+  const showConfirm = (message, onConfirm, opts = {}) =>
+    new Promise(resolve => setConfirmModal({ message, ...opts, onConfirm: () => { setConfirmModal(null); resolve(true); onConfirm?.(); }, onCancel: () => { setConfirmModal(null); resolve(false); } }));
 
   const totalPaginas   = Math.ceil(proveedores.length / porPagina) || 1;
   const paginaActual   = Math.min(pagina, totalPaginas);
@@ -233,7 +237,8 @@ export default function Proveedores() {
     const advertencia = idOTodos === 'todos'
       ? 'Esto reiniciará el procesamiento total de los archivos de TODOS los proveedores.\n\n¿Confirmas?'
       : 'Esto reiniciará el procesamiento total de los archivos de este proveedor.\n\n¿Confirmas?';
-    if (!window.confirm(advertencia)) return;
+    const ok = await showConfirm(advertencia, null, { confirmLabel: 'Confirmar', danger: true });
+    if (!ok) return;
 
     setReseteando(idOTodos);
     setMensajeReset('');
@@ -257,6 +262,7 @@ export default function Proveedores() {
 
   return (
     <div>
+      {confirmModal && <ConfirmModal {...confirmModal} />}
       <PageHeader
         title="Proveedores"
         subtitle="Gestiona los proveedores de precios y su configuración de importación."
