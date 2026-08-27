@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { C, F, shadow } from '../theme';
 import { apiFetch } from '../api';
 import PageHeader from '../components/PageHeader';
@@ -35,7 +35,7 @@ const FORM_VACIO = {
 function inferirTipo(cfg) {
   if (!cfg || typeof cfg !== 'object') return 'ia';
   const t = cfg.tipo;
-  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa', 'pronobel'].includes(t)) return t;
+  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa', 'pronobel', 'llabres'].includes(t)) return t;
   if (t === 'pdf') return 'pdf';
   if (t === 'ia')  return 'ia';
   if (cfg.colSku || t === 'xlsx') return 'xlsx';
@@ -62,7 +62,7 @@ function parseCampos(cfg) {
 
 function buildConfig(tipo, c) {
   if (tipo === 'ia') return { tipo: 'ia' };
-  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa', 'pronobel'].includes(tipo)) return { tipo };
+  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa', 'pronobel', 'llabres'].includes(tipo)) return { tipo };
   if (tipo === 'pdf') {
     const r = { tipo: 'pdf', precioIncluyeIVA: c.precioIncluyeIVA };
     if (c.patronCodigo)  r.patronCodigo  = c.patronCodigo;
@@ -111,6 +111,22 @@ const btnSecondary = {
   fontWeight: 500, borderRadius: 6, background: 'transparent', color: C.textSec, fontFamily: F.sans,
 };
 
+const PARSER_LABEL = {
+  ia: { label: 'IA', bg: '#f0fdf4', color: '#059669' },
+  xlsx: { label: 'Excel', bg: '#eff6ff', color: '#1d4ed8' },
+  pdf:  { label: 'PDF',   bg: '#fef9c3', color: '#a16207' },
+};
+const PARSERS_ESPECIALES = ['acco-brand','carlos-gardy','engatel','scai','demarka','cambiaso','winnex','rommel','chipro','libesa','pronobel','llabres'];
+
+function parserBadge(cfg) {
+  if (!cfg || typeof cfg !== 'object') return PARSER_LABEL.ia;
+  const t = cfg.tipo;
+  if (PARSERS_ESPECIALES.includes(t)) return { label: t, bg: '#f5f3ff', color: '#6d28d9' };
+  if (t === 'pdf') return PARSER_LABEL.pdf;
+  if (t === 'xlsx' || cfg.colSku || Array.isArray(cfg.configs)) return PARSER_LABEL.xlsx;
+  return PARSER_LABEL.ia;
+}
+
 function truncar(str, n = 30) {
   if (!str) return '';
   return str.length > n ? str.slice(0, n) + '…' : str;
@@ -128,6 +144,7 @@ export default function Proveedores() {
   const [porPagina, setPorPagina]       = useState(10);
   const [reseteando, setReseteando]     = useState(null); // id o 'todos'
   const [mensajeReset, setMensajeReset] = useState('');
+  const formRef = useRef(null);
   const [confirmModal, setConfirmModal] = useState(null);
   const showConfirm = (message, onConfirm, opts = {}) =>
     new Promise(resolve => setConfirmModal({ message, ...opts, onConfirm: () => { setConfirmModal(null); resolve(true); onConfirm?.(); }, onCancel: () => { setConfirmModal(null); resolve(false); } }));
@@ -149,11 +166,16 @@ export default function Proveedores() {
     finally { setLoadingTabla(false); }
   }
 
+  function scrollAlForm() {
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }
+
   function abrirCrear() {
     setForm(FORM_VACIO);
     setEditId(null);
     setError('');
     setMostrarForm(true);
+    scrollAlForm();
   }
 
   function abrirEditar(p) {
@@ -171,6 +193,7 @@ export default function Proveedores() {
     setEditId(p.id);
     setError('');
     setMostrarForm(true);
+    scrollAlForm();
   }
 
   function cancelar() {
@@ -294,7 +317,7 @@ export default function Proveedores() {
       )}
 
       {mostrarForm && (
-        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '20px 22px', marginBottom: 16, boxShadow: shadow.sm }}>
+        <div ref={formRef} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '20px 22px', marginBottom: 16, boxShadow: shadow.sm }}>
           <p style={{ margin: '0 0 16px', fontSize: 13, fontWeight: 600, color: C.text }}>
             {editId ? 'Editar proveedor' : 'Nuevo proveedor'}
           </p>
@@ -366,7 +389,7 @@ export default function Proveedores() {
               </div>
             )}
 
-            {['acco-brand','carlos-gardy','engatel','scai','demarka','cambiaso','winnex','rommel','chipro','libesa','pronobel'].includes(form.configTipo) && (
+            {['acco-brand','carlos-gardy','engatel','scai','demarka','cambiaso','winnex','rommel','chipro','libesa','pronobel','llabres'].includes(form.configTipo) && (
               <div style={{ gridColumn: '1 / -1' }}>
                 <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans, background: '#eff6ff', padding: '8px 12px', borderRadius: 6, border: '1px solid #bfdbfe' }}>
                   Parser especial sin configuración adicional requerida.
@@ -425,6 +448,7 @@ export default function Proveedores() {
               <th style={thStyle}>Nombre</th>
               <th style={thStyle}>Apodo</th>
               <th style={thStyle}>Tema</th>
+              <th style={thStyle}>Parser</th>
               <th style={{ ...thStyle, textAlign: 'right' }}>Descuento %</th>
               <th style={thStyle}>Drive Folder</th>
               <th style={{ ...thStyle, textAlign: 'center' }}>Estado</th>
@@ -435,7 +459,7 @@ export default function Proveedores() {
             {loadingTabla && (
               Array.from({ length: 4 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 7 }).map((_, j) => (
+                  {Array.from({ length: 8 }).map((_, j) => (
                     <td key={j} style={tdStyle}>
                       <div style={{ height: 13, background: C.border, borderRadius: 4, animation: 'shimmer 1.4s ease-in-out infinite', width: j === 0 ? '70%' : '50%' }} />
                     </td>
@@ -445,13 +469,14 @@ export default function Proveedores() {
             )}
             {!loadingTabla && proveedores.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: C.textMuted, padding: 36 }}>
+                <td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: C.textMuted, padding: 36 }}>
                   No hay proveedores. Crea uno para comenzar.
                 </td>
               </tr>
             )}
             {!loadingTabla && proveedoresPag.map(p => {
               const temaBadge = TEMA_BADGE[p.tema];
+              const pb = parserBadge(p.config);
               return (
                 <tr key={p.id} style={{ background: p.activo ? C.surface : '#fafafa' }}>
                   <td style={{ ...tdStyle, fontWeight: 500, opacity: p.activo ? 1 : 0.6 }}>{p.nombre}</td>
@@ -466,6 +491,11 @@ export default function Proveedores() {
                     ) : (
                       <span style={{ color: C.textMuted, fontSize: 12 }}>—</span>
                     )}
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, background: pb.bg, color: pb.color, fontSize: 11, fontWeight: 600, fontFamily: F.mono }}>
+                      {pb.label}
+                    </span>
                   </td>
                   <td style={{ ...tdStyle, textAlign: 'right' }}>
                     <span style={{ fontFamily: F.mono, fontSize: 13 }}>
