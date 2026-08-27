@@ -348,6 +348,7 @@ export default function Proveedores() {
                 <option value="rommel">Rommel (parser especial)</option>
                 <option value="scai">SCAI (parser especial)</option>
                 <option value="winnex">Winnex (parser especial)</option>
+                <option value="llabres">Llabres (parser especial)</option>
               </select>
             </div>
 
