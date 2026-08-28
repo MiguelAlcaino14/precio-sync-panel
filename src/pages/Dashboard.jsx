@@ -341,7 +341,12 @@ export default function Dashboard() {
         </div>
 
         {/* Filtro tema — siempre visible */}
-        <select value={filtroTema ?? ''} onChange={e => { setFiltroTema(e.target.value || null); setPaginaLista(1); setVisibles(POR_PAGINA); }}
+        <select value={filtroTema ?? ''} onChange={e => {
+          setFiltroTema(e.target.value || null);
+          setProveedorIdLista(''); // resetea proveedor al cambiar categoría
+          setPaginaLista(1);
+          setVisibles(POR_PAGINA);
+        }}
           style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
           <option value="">Todas las categorías</option>
           <option value="aseo">Aseo</option>
@@ -349,11 +354,13 @@ export default function Dashboard() {
           <option value="alimentos">Alimentos</option>
         </select>
 
-        {/* Filtro proveedor — siempre visible */}
+        {/* Filtro proveedor — filtrado por categoría seleccionada */}
         <select value={proveedorIdLista} onChange={e => { setProveedorIdLista(e.target.value); setPaginaLista(1); }}
           style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
           <option value="">Todos los proveedores</option>
-          {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+          {proveedores
+            .filter(p => !filtroTema || p.tema === filtroTema)
+            .map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
         </select>
 
         {/* Orden por costo — solo en lista */}
