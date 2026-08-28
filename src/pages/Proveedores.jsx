@@ -32,10 +32,52 @@ const FORM_VACIO = {
   configCampos: { ...CAMPOS_VACIO },
 };
 
+const PARSERS_ESPECIALES = [
+  'acco-brand',
+  'carlos-gardy',
+  'engatel',
+  'scai',
+  'demarka',
+  'cambiaso',
+  'winnex',
+  'rommel',
+  'chipro',
+  'libesa',
+  'pronobel',
+  'llabres',
+  'artline',
+  'teknofas',
+  'adioffice',
+  'rem',
+  'rhein',
+  'maxell',
+];
+
+const PARSER_OPTIONS = [
+  { value: 'acco-brand', label: 'ACCO Brand' },
+  { value: 'adioffice', label: 'Adioffice' },
+  { value: 'artline', label: 'Artline' },
+  { value: 'cambiaso', label: 'Cambiaso' },
+  { value: 'carlos-gardy', label: 'Carlos Gardy' },
+  { value: 'chipro', label: 'Chipro' },
+  { value: 'demarka', label: 'Demarka' },
+  { value: 'engatel', label: 'Engatel' },
+  { value: 'libesa', label: 'Libesa' },
+  { value: 'llabres', label: 'Llabres' },
+  { value: 'maxell', label: 'Maxell' },
+  { value: 'pronobel', label: 'Pronobel' },
+  { value: 'rem', label: 'REM MAX' },
+  { value: 'rhein', label: 'Rhein' },
+  { value: 'rommel', label: 'Rommel' },
+  { value: 'scai', label: 'SCAI' },
+  { value: 'teknofas', label: 'Teknofas' },
+  { value: 'winnex', label: 'Winnex' },
+];
+
 function inferirTipo(cfg) {
   if (!cfg || typeof cfg !== 'object') return 'ia';
   const t = cfg.tipo;
-  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa', 'pronobel', 'llabres', 'artline'].includes(t)) return t;
+  if (PARSERS_ESPECIALES.includes(t)) return t;
   if (t === 'pdf') return 'pdf';
   if (t === 'ia')  return 'ia';
   if (cfg.colSku || t === 'xlsx') return 'xlsx';
@@ -62,7 +104,8 @@ function parseCampos(cfg) {
 
 function buildConfig(tipo, c) {
   if (tipo === 'ia') return { tipo: 'ia' };
-  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa', 'pronobel', 'llabres', 'artline'].includes(tipo)) return { tipo };
+  if (tipo === 'teknofas') return { tipo, colPrecio: c.colPrecio || 'Precio unit.' };
+  if (PARSERS_ESPECIALES.includes(tipo)) return { tipo };
   if (tipo === 'pdf') {
     const r = { tipo: 'pdf', precioIncluyeIVA: c.precioIncluyeIVA };
     if (c.patronCodigo)  r.patronCodigo  = c.patronCodigo;
@@ -122,7 +165,6 @@ const PARSER_LABEL = {
   xlsx: { label: 'Excel', bg: '#eff6ff', color: '#1d4ed8' },
   pdf:  { label: 'PDF',   bg: '#fef9c3', color: '#a16207' },
 };
-const PARSERS_ESPECIALES = ['acco-brand','carlos-gardy','engatel','scai','demarka','cambiaso','winnex','rommel','chipro','libesa','pronobel','llabres'];
 
 function parserBadge(cfg) {
   if (!cfg || typeof cfg !== 'object') return PARSER_LABEL.ia;
@@ -385,19 +427,9 @@ export default function Proveedores() {
                 <option value="ia">IA (automático — Excel y PDF)</option>
                 <option value="xlsx">Excel (columnas manuales)</option>
                 <option value="pdf">PDF (patrón manual)</option>
-                <option value="acco-brand">ACCO Brand (importación especial)</option>
-                <option value="cambiaso">Cambiaso (importación especial)</option>
-                <option value="carlos-gardy">Carlos Gardy (importación especial)</option>
-                <option value="chipro">Chipro (importación especial)</option>
-                <option value="demarka">Demarka (importación especial)</option>
-                <option value="engatel">Engatel (importación especial)</option>
-                <option value="libesa">Libesa (importación especial)</option>
-                <option value="pronobel">Pronobel (importación especial)</option>
-                <option value="rommel">Rommel (importación especial)</option>
-                <option value="scai">SCAI (importación especial)</option>
-                <option value="winnex">Winnex (importación especial)</option>
-                <option value="llabres">Llabres (importación especial)</option>
-                <option value="artline">Artline (importación especial)</option>
+                {PARSER_OPTIONS.map(parser => (
+                  <option key={parser.value} value={parser.value}>{parser.label} (importación especial)</option>
+                ))}
               </select>
             </div>
 
@@ -409,10 +441,12 @@ export default function Proveedores() {
               </div>
             )}
 
-            {['acco-brand','carlos-gardy','engatel','scai','demarka','cambiaso','winnex','rommel','chipro','libesa','pronobel','llabres'].includes(form.configTipo) && (
+            {PARSERS_ESPECIALES.includes(form.configTipo) && (
               <div style={{ gridColumn: '1 / -1' }}>
                 <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans, background: '#eff6ff', padding: '8px 12px', borderRadius: 6, border: '1px solid #bfdbfe' }}>
-                  Importación especial sin configuración adicional requerida.
+                  {form.configTipo === 'teknofas'
+                    ? 'Importación especial Teknofas. Usa la columna "Precio unit." por defecto.'
+                    : 'Importación especial sin configuración adicional requerida.'}
                 </p>
               </div>
             )}
