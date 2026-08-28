@@ -35,7 +35,7 @@ const FORM_VACIO = {
 function inferirTipo(cfg) {
   if (!cfg || typeof cfg !== 'object') return 'ia';
   const t = cfg.tipo;
-  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa', 'pronobel', 'llabres'].includes(t)) return t;
+  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa', 'pronobel', 'llabres', 'artline'].includes(t)) return t;
   if (t === 'pdf') return 'pdf';
   if (t === 'ia')  return 'ia';
   if (cfg.colSku || t === 'xlsx') return 'xlsx';
@@ -62,7 +62,7 @@ function parseCampos(cfg) {
 
 function buildConfig(tipo, c) {
   if (tipo === 'ia') return { tipo: 'ia' };
-  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa', 'pronobel', 'llabres'].includes(tipo)) return { tipo };
+  if (['acco-brand', 'carlos-gardy', 'engatel', 'scai', 'demarka', 'cambiaso', 'winnex', 'rommel', 'chipro', 'libesa', 'pronobel', 'llabres', 'artline'].includes(tipo)) return { tipo };
   if (tipo === 'pdf') {
     const r = { tipo: 'pdf', precioIncluyeIVA: c.precioIncluyeIVA };
     if (c.patronCodigo)  r.patronCodigo  = c.patronCodigo;
@@ -397,6 +397,7 @@ export default function Proveedores() {
                 <option value="scai">SCAI (importación especial)</option>
                 <option value="winnex">Winnex (importación especial)</option>
                 <option value="llabres">Llabres (importación especial)</option>
+                <option value="artline">Artline (importación especial)</option>
               </select>
             </div>
 
