@@ -768,11 +768,11 @@ function SugerenciaModal({ proveedor, sugerencia, onAplicar, onIgnorar }) {
         border: `1px solid ${C.border}`,
       }}>
         <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: C.text }}>
-          Parser detectado automáticamente
+          Importación detectada automáticamente
         </p>
         <p style={{ margin: '0 0 20px', fontSize: 13, color: C.textSec }}>
           Claude identificó la estructura del Excel de <strong>{proveedor?.nombre}</strong>.
-          ¿Aplicar parser Excel con estas columnas?
+          ¿Aplicar importación Excel con estas columnas?
         </p>
 
         <div style={{
@@ -797,7 +797,7 @@ function SugerenciaModal({ proveedor, sugerencia, onAplicar, onIgnorar }) {
         </div>
 
         <p style={{ margin: '0 0 20px', fontSize: 12, color: C.textMuted }}>
-          Al aplicar, las próximas importaciones usarán el parser Excel (más rápido, sin costo de IA).
+          Al aplicar, las próximas importaciones usarán el modo Excel (más rápido, sin costo de IA).
         </p>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -813,7 +813,7 @@ function SugerenciaModal({ proveedor, sugerencia, onAplicar, onIgnorar }) {
             borderRadius: 6, border: 'none', background: C.accent, color: '#fff',
             fontFamily: F.sans,
           }}>
-            Aplicar parser Excel
+            Aplicar importación Excel
           </button>
         </div>
       </div>

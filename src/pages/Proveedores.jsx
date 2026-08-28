@@ -385,25 +385,25 @@ export default function Proveedores() {
                 <option value="ia">IA (automático — Excel y PDF)</option>
                 <option value="xlsx">Excel (columnas manuales)</option>
                 <option value="pdf">PDF (patrón manual)</option>
-                <option value="acco-brand">ACCO Brand (parser especial)</option>
-                <option value="cambiaso">Cambiaso (parser especial)</option>
-                <option value="carlos-gardy">Carlos Gardy (parser especial)</option>
-                <option value="chipro">Chipro (parser especial)</option>
-                <option value="demarka">Demarka (parser especial)</option>
-                <option value="engatel">Engatel (parser especial)</option>
-                <option value="libesa">Libesa (parser especial)</option>
-                <option value="pronobel">Pronobel (parser especial)</option>
-                <option value="rommel">Rommel (parser especial)</option>
-                <option value="scai">SCAI (parser especial)</option>
-                <option value="winnex">Winnex (parser especial)</option>
-                <option value="llabres">Llabres (parser especial)</option>
+                <option value="acco-brand">ACCO Brand (importación especial)</option>
+                <option value="cambiaso">Cambiaso (importación especial)</option>
+                <option value="carlos-gardy">Carlos Gardy (importación especial)</option>
+                <option value="chipro">Chipro (importación especial)</option>
+                <option value="demarka">Demarka (importación especial)</option>
+                <option value="engatel">Engatel (importación especial)</option>
+                <option value="libesa">Libesa (importación especial)</option>
+                <option value="pronobel">Pronobel (importación especial)</option>
+                <option value="rommel">Rommel (importación especial)</option>
+                <option value="scai">SCAI (importación especial)</option>
+                <option value="winnex">Winnex (importación especial)</option>
+                <option value="llabres">Llabres (importación especial)</option>
               </select>
             </div>
 
             {form.configTipo === 'ia' && (
               <div style={{ gridColumn: '1 / -1' }}>
                 <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans, background: '#f0fdf4', padding: '8px 12px', borderRadius: 6, border: '1px solid #bbf7d0' }}>
-                  El parser IA detecta las columnas automáticamente. No requiere configuración adicional.
+                  La importación IA detecta las columnas automáticamente. No requiere configuración adicional.
                 </p>
               </div>
             )}
@@ -411,7 +411,7 @@ export default function Proveedores() {
             {['acco-brand','carlos-gardy','engatel','scai','demarka','cambiaso','winnex','rommel','chipro','libesa','pronobel','llabres'].includes(form.configTipo) && (
               <div style={{ gridColumn: '1 / -1' }}>
                 <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans, background: '#eff6ff', padding: '8px 12px', borderRadius: 6, border: '1px solid #bfdbfe' }}>
-                  Parser especial sin configuración adicional requerida.
+                  Importación especial sin configuración adicional requerida.
                 </p>
               </div>
             )}
@@ -515,7 +515,7 @@ export default function Proveedores() {
               <th style={thStyle}>Nombre</th>
               <th style={thStyle}>Apodo</th>
               <th style={thStyle}>Tema</th>
-              <th style={thStyle}>Parser</th>
+              <th style={thStyle}>Importación</th>
               <th style={{ ...thStyle, textAlign: 'right' }}>Descuento %</th>
               <th style={thStyle}>Drive Folder</th>
               <th style={{ ...thStyle, textAlign: 'center' }}>Estado</th>
