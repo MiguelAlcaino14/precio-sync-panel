@@ -51,6 +51,7 @@ const PARSERS_ESPECIALES = [
   'rem',
   'rhein',
   'maxell',
+  'torre',
 ];
 
 const PARSER_OPTIONS = [
@@ -71,6 +72,7 @@ const PARSER_OPTIONS = [
   { value: 'rommel', label: 'Rommel' },
   { value: 'scai', label: 'SCAI' },
   { value: 'teknofas', label: 'Teknofas' },
+  { value: 'torre', label: 'Torre' },
   { value: 'winnex', label: 'Winnex' },
 ];
 
