@@ -49,6 +49,16 @@ export default function Dashboard() {
   const [ordenCosto, setOrdenCosto]             = useState(null); // null | 'asc' | 'desc'
   const [porPaginaLista, setPorPaginaLista]     = useState(25);
   const [productoExpandido, setProductoExpandido] = useState(null); // producto.id | null
+  const [copiado, setCopiado]                     = useState(null); // key única del campo copiado
+
+  function copiar(e, key, valor) {
+    e.stopPropagation();
+    if (valor == null || valor === '—') return;
+    navigator.clipboard.writeText(String(valor)).then(() => {
+      setCopiado(key);
+      setTimeout(() => setCopiado(null), 1400);
+    }).catch(() => {});
+  }
 
   useEffect(() => {
     if (!productoExpandido) return;
@@ -515,10 +525,16 @@ export default function Dashboard() {
                     onMouseEnter={e => e.currentTarget.style.background = C.surfaceHover || '#f8fafc'}
                     onMouseLeave={e => e.currentTarget.style.background = C.surface}
                   >
-                    <td style={{ ...table.td, fontFamily: F.mono, fontSize: 11, color: C.textSec, whiteSpace: 'nowrap', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.sku}</td>
-                    <td style={{ ...table.td, maxWidth: 320, fontWeight: 500 }}>
-                      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {p.nombre}
+                    <td title={copiado === `${p.id}-sku` ? '✓ Copiado' : 'Clic para copiar'} onClick={e => copiar(e, `${p.id}-sku`, p.sku)}
+                      style={{ ...table.td, fontFamily: F.mono, fontSize: 11, whiteSpace: 'nowrap', maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'copy',
+                        color: copiado === `${p.id}-sku` ? C.green : C.textSec }}>
+                      {copiado === `${p.id}-sku` ? '✓' : p.sku}
+                    </td>
+                    <td title={copiado === `${p.id}-nombre` ? '✓ Copiado' : 'Clic para copiar'} onClick={e => copiar(e, `${p.id}-nombre`, p.nombre)}
+                      style={{ ...table.td, maxWidth: 320, fontWeight: 500, cursor: 'copy' }}>
+                      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        color: copiado === `${p.id}-nombre` ? C.green : 'inherit' }}>
+                        {copiado === `${p.id}-nombre` ? '✓ Copiado' : p.nombre}
                       </span>
                     </td>
                     <td style={{ ...table.td, whiteSpace: 'nowrap' }}>
@@ -529,14 +545,18 @@ export default function Dashboard() {
                     </td>
                     <td style={{ ...table.td, fontSize: 12, color: C.textSec, whiteSpace: 'nowrap' }}>{p.proveedor?.nombre || '—'}</td>
                     <td style={{ ...table.td, fontSize: 12, color: C.textSec }}>{p.marca || <span style={{ color: C.textMuted }}>—</span>}</td>
-                    <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12 }}>
-                      {p.ultimoCosto != null ? fmt(p.ultimoCosto) : <span style={{ color: C.textMuted }}>—</span>}
+                    <td title={copiado === `${p.id}-costo` ? '✓ Copiado' : 'Clic para copiar'} onClick={e => copiar(e, `${p.id}-costo`, p.ultimoCosto)}
+                      style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12, cursor: p.ultimoCosto != null ? 'copy' : 'default',
+                        color: copiado === `${p.id}-costo` ? C.green : 'inherit' }}>
+                      {copiado === `${p.id}-costo` ? '✓' : p.ultimoCosto != null ? fmt(p.ultimoCosto) : <span style={{ color: C.textMuted }}>—</span>}
                     </td>
                     <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12 }}>
                       {p.precioJS != null ? fmt(p.precioJS) : <span style={{ color: C.textMuted }}>—</span>}
                     </td>
-                    <td style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12, fontWeight: 600, color: p.precioSugerido ? C.text : C.textMuted }}>
-                      {p.precioSugerido != null ? fmt(p.precioSugerido) : '—'}
+                    <td title={copiado === `${p.id}-sugerido` ? '✓ Copiado' : 'Clic para copiar'} onClick={e => copiar(e, `${p.id}-sugerido`, p.precioSugerido)}
+                      style={{ ...table.td, fontFamily: F.mono, textAlign: 'right', fontSize: 12, fontWeight: 600, cursor: p.precioSugerido != null ? 'copy' : 'default',
+                        color: copiado === `${p.id}-sugerido` ? C.green : p.precioSugerido ? C.text : C.textMuted }}>
+                      {copiado === `${p.id}-sugerido` ? '✓' : p.precioSugerido != null ? fmt(p.precioSugerido) : '—'}
                     </td>
                     <td style={{ ...table.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {p.markupPct != null
