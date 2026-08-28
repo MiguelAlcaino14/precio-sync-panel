@@ -110,7 +110,8 @@ export default function Dashboard() {
   }, [vista, busqueda, filtroTema, proveedorIdLista, paginaLista, porPaginaLista]); // eslint-disable-line
 
   const proveedoresFiltrados = (busqueda.trim() ? busquedaProducto : proveedores)
-    .filter(p => !filtroTema || p.tema === filtroTema);
+    .filter(p => !filtroTema || p.tema === filtroTema)
+    .filter(p => !proveedorIdLista || String(p.id) === String(proveedorIdLista));
 
   async function handleUpload(proveedorId, file) {
     if (!file) return;
@@ -311,46 +312,7 @@ export default function Dashboard() {
       </div>
 
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 16px', marginBottom: 20, boxShadow: shadow.sm, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        {vista === 'cuadro' && TEMAS.map(t => {
-          const activo = filtroTema === t.value;
-          const count  = t.value === null ? proveedores.length : proveedores.filter(p => p.tema === t.value).length;
-          return (
-            <button
-              key={String(t.value)}
-              onClick={() => setFiltroTema(t.value)}
-              style={{
-                cursor: 'pointer',
-                padding: '6px 14px',
-                fontSize: 12,
-                fontWeight: 600,
-                borderRadius: 6,
-                border: activo ? 'none' : `1px solid ${C.border}`,
-                background: activo ? C.accent : '#f1f5f9',
-                color: activo ? '#ffffff' : C.textSec,
-                fontFamily: F.sans,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                transition: 'background 0.15s, color 0.15s',
-              }}
-            >
-              {t.label}
-              {!loading && (
-                <span style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: '1px 6px',
-                  borderRadius: 10,
-                  background: activo ? 'rgba(255,255,255,0.25)' : C.border,
-                  color: activo ? '#ffffff' : C.textMuted,
-                }}>
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-
+        {/* Búsqueda */}
         <div style={{ position: 'relative', flex: '1 1 160px', maxWidth: 280 }}>
           <svg
             width="14" height="14" fill="none" viewBox="0 0 24 24"
@@ -361,55 +323,62 @@ export default function Dashboard() {
           </svg>
           <input
             type="text"
-            placeholder={vista === 'lista' ? 'Buscar SKU o producto...' : 'Buscar proveedor o producto...'}
+            placeholder={vista === 'lista' ? 'Buscar SKU o producto...' : 'Buscar proveedor...'}
             value={busqueda}
             onChange={e => { setBusqueda(e.target.value); setVisibles(POR_PAGINA); }}
             style={{
-              padding: '7px 28px 7px 30px',
-              fontSize: 13,
-              fontFamily: F.sans,
-              color: C.text,
-              background: C.surface,
-              border: `1px solid ${C.border}`,
-              borderRadius: 6,
-              outline: 'none',
-              width: '100%',
-              boxSizing: 'border-box',
+              padding: '7px 28px 7px 30px', fontSize: 13, fontFamily: F.sans,
+              color: C.text, background: C.surface, border: `1px solid ${C.border}`,
+              borderRadius: 6, outline: 'none', width: '100%', boxSizing: 'border-box',
             }}
           />
           {busqueda && (
             <button
               onClick={() => { setBusqueda(''); setVisibles(POR_PAGINA); }}
-              style={{
-                position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-                border: 'none', background: 'none', cursor: 'pointer',
-                color: C.textMuted, fontSize: 15, lineHeight: 1, padding: 2,
-              }}
+              style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', color: C.textMuted, fontSize: 15, lineHeight: 1, padding: 2 }}
             >×</button>
           )}
         </div>
 
+        {/* Filtro tema — siempre visible */}
+        <select value={filtroTema ?? ''} onChange={e => { setFiltroTema(e.target.value || null); setPaginaLista(1); setVisibles(POR_PAGINA); }}
+          style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+          <option value="">Todas las categorías</option>
+          <option value="aseo">Aseo</option>
+          <option value="libreria">Librería</option>
+          <option value="alimentos">Alimentos</option>
+        </select>
+
+        {/* Filtro proveedor — siempre visible */}
+        <select value={proveedorIdLista} onChange={e => { setProveedorIdLista(e.target.value); setPaginaLista(1); }}
+          style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+          <option value="">Todos los proveedores</option>
+          {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+        </select>
+
+        {/* Orden por costo — solo en lista */}
         {vista === 'lista' && (
-          <>
-            <select value={filtroTema ?? ''} onChange={e => { setFiltroTema(e.target.value || null); setPaginaLista(1); }}
-              style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
-              <option value="">Todas las categorías</option>
-              <option value="aseo">Aseo</option>
-              <option value="libreria">Librería</option>
-              <option value="alimentos">Alimentos</option>
-            </select>
-            <select value={proveedorIdLista} onChange={e => setProveedorIdLista(e.target.value)}
-              style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
-              <option value="">Todos los proveedores</option>
-              {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-            </select>
-            <select value={ordenCosto ?? ''} onChange={e => setOrdenCosto(e.target.value || null)}
-              style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
-              <option value="">Sin orden por costo</option>
-              <option value="desc">↓ Mayor costo</option>
-              <option value="asc">↑ Menor costo</option>
-            </select>
-          </>
+          <select value={ordenCosto ?? ''} onChange={e => setOrdenCosto(e.target.value || null)}
+            style={{ padding: '7px 10px', fontSize: 13, fontFamily: F.sans, border: `1px solid ${C.border}`, borderRadius: 6, background: C.surface, color: C.text, cursor: 'pointer', outline: 'none' }}>
+            <option value="">Sin orden por costo</option>
+            <option value="desc">↓ Mayor costo</option>
+            <option value="asc">↑ Menor costo</option>
+          </select>
+        )}
+
+        {/* Chip "Productos encontrados" — solo en lista con búsqueda activa */}
+        {vista === 'lista' && busqueda && !loadingProductos && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 12px', borderRadius: 20,
+            background: C.accentLight, border: `1px solid ${C.accent}44`,
+            fontSize: 12, fontWeight: 600, color: C.accent, fontFamily: F.sans,
+          }}>
+            Productos encontrados
+            <span style={{ background: C.accent, color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
+              {totalProductos}
+            </span>
+          </span>
         )}
 
         <div style={{ display: 'flex', gap: 2, background: C.border, borderRadius: 6, padding: 2, marginLeft: 'auto' }}>

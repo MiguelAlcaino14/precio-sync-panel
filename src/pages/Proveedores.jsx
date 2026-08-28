@@ -155,6 +155,8 @@ export default function Proveedores() {
   const [filtroTema, setFiltroTema]     = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [menuAbierto, setMenuAbierto]   = useState(null); // id del proveedor con menú abierto
+  const [menuPos, setMenuPos]           = useState({ top: 0, right: 0 });
+  const menuBtnRef = useRef({});
   const [confirmModal, setConfirmModal] = useState(null);
   const showConfirm = (message, onConfirm, opts = {}) =>
     new Promise(resolve => setConfirmModal({ message, ...opts, onConfirm: () => { setConfirmModal(null); resolve(true); onConfirm?.(); }, onCancel: () => { setConfirmModal(null); resolve(false); } }));
@@ -595,7 +597,16 @@ export default function Proveedores() {
                   <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap', position: 'relative' }}>
                     <div style={{ position: 'relative', display: 'inline-block' }}>
                       <button
-                        onClick={() => setMenuAbierto(menuAbierto === p.id ? null : p.id)}
+                        ref={el => { menuBtnRef.current[p.id] = el; }}
+                        onClick={() => {
+                          if (menuAbierto === p.id) { setMenuAbierto(null); return; }
+                          const btn = menuBtnRef.current[p.id];
+                          if (btn) {
+                            const rect = btn.getBoundingClientRect();
+                            setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                          }
+                          setMenuAbierto(p.id);
+                        }}
                         style={{ ...btnSecondary, padding: '4px 10px', fontSize: 14, fontWeight: 700, letterSpacing: 1 }}
                         title="Acciones"
                       >
@@ -603,7 +614,7 @@ export default function Proveedores() {
                       </button>
                       {menuAbierto === p.id && (
                         <div style={{
-                          position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 100,
+                          position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 200,
                           background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7,
                           boxShadow: shadow.md, minWidth: 160, overflow: 'hidden',
                         }}
