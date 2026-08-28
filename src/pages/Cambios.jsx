@@ -40,6 +40,7 @@ export default function Cambios() {
   const showAlert = (message, type = 'info') => setAlertModal({ message, type });
 
   useEffect(() => {
+    // Carga inicial: trae todo en paralelo, reutiliza pendiente para la tabla
     Promise.all([
       apiFetch('/cambios?estado=pendiente').then(r => r.json()).catch(() => []),
       apiFetch('/cambios?estado=aprobado').then(r => r.json()).catch(() => []),
@@ -49,13 +50,15 @@ export default function Cambios() {
         pendiente: Array.isArray(pend) ? pend.length : 0,
         aprobado:  Array.isArray(apro) ? apro.length : 0,
       });
-      if (Array.isArray(provs)) {
-        setTodosProveedores(provs.map(p => p.nombre).sort());
-      }
+      if (Array.isArray(provs)) setTodosProveedores(provs.map(p => p.nombre).sort());
+      // Poblar tabla directamente con los datos ya traídos (evita request duplicado)
+      if (estado === 'pendiente') setCambios(Array.isArray(pend) ? pend : []);
     });
   }, []);
 
   useEffect(() => {
+    // Solo recarga cuando el usuario cambia de pestaña (no en mount para 'pendiente')
+    if (estado === 'pendiente') return; // ya cargado en el effect inicial
     apiFetch(`/cambios?estado=${estado}`)
       .then(r => r.json())
       .then(data => {
