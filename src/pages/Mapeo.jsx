@@ -869,7 +869,6 @@ export default function Mapeo() {
                           {restaurandoId === item.id ? '…' : 'Restaurar'}
                         </button>
                       )}
-                      )}
                     </div>
                   </td>
                 </tr>
