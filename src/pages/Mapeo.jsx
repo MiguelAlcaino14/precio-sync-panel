@@ -246,14 +246,11 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onAceptad
         <td colSpan={7} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
           <div style={{ padding: '14px 20px', background: '#f8fafc', borderLeft: `3px solid ${C.textMuted}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans }}>
-              Item ignorado. Restaurar lo devuelve a pendiente. Aceptar lo devuelve a {item.jumpsellerProductId ? 'confirmado' : 'pendiente'}.
+              Item ignorado. Restaurar lo devuelve a pendiente.
             </p>
             {error && <p style={{ margin: 0, fontSize: 12, color: C.red, fontFamily: F.sans, fontWeight: 500 }}>{error}</p>}
             <button onClick={restaurar} disabled={guardando} style={{ ...btn.solid, padding: '6px 14px', fontSize: 12, opacity: guardando ? 0.5 : 1, cursor: guardando ? 'default' : 'pointer' }}>
               {guardando ? 'Restaurando…' : 'Restaurar'}
-            </button>
-            <button onClick={aceptar} disabled={guardando} style={{ ...btn.green, padding: '6px 14px', fontSize: 12, opacity: guardando ? 0.5 : 1, cursor: guardando ? 'default' : 'pointer' }}>
-              {guardando ? 'Aceptando…' : 'Aceptar'}
             </button>
             <button onClick={onCancelar} style={{ ...btn.outline, padding: '6px 14px', fontSize: 12 }}>Cancelar</button>
           </div>
@@ -526,12 +523,6 @@ function FilaComparacion({ skuProveedor, propioId, onAccion, onCerrar }) {
                             <button onClick={() => accion(it.id, 'restaurar')} disabled={accionId === it.id}
                               style={{ ...btn.outline, padding: '4px 10px', fontSize: 11, color: C.accent, borderColor: C.accent, opacity: accionId === it.id ? 0.5 : 1, cursor: accionId === it.id ? 'default' : 'pointer' }}>
                               {accionId === it.id ? '…' : 'Restaurar'}
-                            </button>
-                          )}
-                          {it.estado === 'ignorado' && (
-                            <button onClick={() => accion(it.id, 'aceptar')} disabled={accionId === it.id}
-                              style={{ ...btn.green, padding: '4px 10px', fontSize: 11, opacity: accionId === it.id ? 0.5 : 1, cursor: accionId === it.id ? 'default' : 'pointer' }}>
-                              {accionId === it.id ? '…' : 'Aceptar'}
                             </button>
                           )}
                         </div>
@@ -878,11 +869,6 @@ export default function Mapeo() {
                           {restaurandoId === item.id ? '…' : 'Restaurar'}
                         </button>
                       )}
-                      {item.estado === 'ignorado' && (
-                        <button onClick={() => handleAceptarDirecto(item.id)} disabled={aceptandoId === item.id}
-                          style={{ ...btn.green, padding: '5px 12px', fontSize: 12, opacity: aceptandoId === item.id ? 0.5 : 1, cursor: aceptandoId === item.id ? 'not-allowed' : 'pointer' }}>
-                          {aceptandoId === item.id ? '…' : 'Aceptar'}
-                        </button>
                       )}
                     </div>
                   </td>
