@@ -92,7 +92,7 @@ function TemaTag({ tema }) {
 }
 
 // ─── FilaExpandida ─────────────────────────────────────────────────────────────
-function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado, onCancelar }) {
+function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onAceptado, onEditado, onCancelar }) {
   const [skuEdit, setSkuEdit]           = useState(item.skuProveedor || '');
   const [nombre, setNombre]             = useState(item.nombreProducto || '');
   const [query, setQuery]               = useState(item.nombreProducto || item.skuProveedor || '');
@@ -213,7 +213,7 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
       const res  = await apiFetch(`/mapeo/${item.id}/ignorar`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Error al ignorar.'); return; }
-      onIgnorado(item.id);
+      onIgnorado(item.id, data.autoResuelto ?? null);
     } catch { setError('Error de conexión.'); }
     finally { setGuardando(false); }
   }
@@ -229,17 +229,31 @@ function FilaExpandida({ item, onConfirmado, onIgnorado, onRestaurado, onEditado
     finally { setGuardando(false); }
   }
 
+  async function aceptar() {
+    setError(''); setGuardando(true);
+    try {
+      const res  = await apiFetch(`/mapeo/${item.id}/aceptar`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'Error al aceptar.'); return; }
+      onAceptado(item.id, data.estado);
+    } catch { setError('Error de conexión.'); }
+    finally { setGuardando(false); }
+  }
+
   if (item.estado === 'ignorado') {
     return (
       <tr>
         <td colSpan={7} style={{ padding: 0, borderBottom: `1px solid ${C.border}` }}>
           <div style={{ padding: '14px 20px', background: '#f8fafc', borderLeft: `3px solid ${C.textMuted}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <p style={{ margin: 0, fontSize: 12, color: C.textSec, fontFamily: F.sans }}>
-              Item ignorado. Restaurarlo lo devuelve a pendiente.
+              Item ignorado. Restaurar lo devuelve a pendiente. Aceptar lo devuelve a {item.jumpsellerProductId ? 'confirmado' : 'pendiente'}.
             </p>
             {error && <p style={{ margin: 0, fontSize: 12, color: C.red, fontFamily: F.sans, fontWeight: 500 }}>{error}</p>}
             <button onClick={restaurar} disabled={guardando} style={{ ...btn.solid, padding: '6px 14px', fontSize: 12, opacity: guardando ? 0.5 : 1, cursor: guardando ? 'default' : 'pointer' }}>
               {guardando ? 'Restaurando…' : 'Restaurar'}
+            </button>
+            <button onClick={aceptar} disabled={guardando} style={{ ...btn.green, padding: '6px 14px', fontSize: 12, opacity: guardando ? 0.5 : 1, cursor: guardando ? 'default' : 'pointer' }}>
+              {guardando ? 'Aceptando…' : 'Aceptar'}
             </button>
             <button onClick={onCancelar} style={{ ...btn.outline, padding: '6px 14px', fontSize: 12 }}>Cancelar</button>
           </div>
@@ -514,6 +528,12 @@ function FilaComparacion({ skuProveedor, propioId, onAccion, onCerrar }) {
                               {accionId === it.id ? '…' : 'Restaurar'}
                             </button>
                           )}
+                          {it.estado === 'ignorado' && (
+                            <button onClick={() => accion(it.id, 'aceptar')} disabled={accionId === it.id}
+                              style={{ ...btn.green, padding: '4px 10px', fontSize: 11, opacity: accionId === it.id ? 0.5 : 1, cursor: accionId === it.id ? 'default' : 'pointer' }}>
+                              {accionId === it.id ? '…' : 'Aceptar'}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -553,6 +573,7 @@ export default function Mapeo() {
   const [comparando, setComparando]       = useState(null); // { id, skuProveedor }
   const [ignorandoId, setIgnorandoId]     = useState(null);
   const [restaurandoId, setRestaurandoId] = useState(null);
+  const [aceptandoId, setAceptandoId]     = useState(null);
   const [seleccionados, setSeleccionados] = useState(new Set());
   const [bulkLoading, setBulkLoading]     = useState(false);
   const [detectando, setDetectando]       = useState(false);
@@ -621,7 +642,14 @@ export default function Mapeo() {
 
   async function handleIgnorarDirecto(id) {
     setIgnorandoId(id);
-    try { if ((await apiFetch(`/mapeo/${id}/ignorar`, { method: 'POST' })).ok) actualizarEstado(id, 'ignorado'); } catch {}
+    try {
+      const res = await apiFetch(`/mapeo/${id}/ignorar`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        actualizarEstado(id, 'ignorado');
+        if (data.autoResuelto) actualizarEstado(data.autoResuelto.id, data.autoResuelto.estado);
+      }
+    } catch {}
     finally { setIgnorandoId(null); }
   }
 
@@ -629,6 +657,15 @@ export default function Mapeo() {
     setRestaurandoId(id);
     try { if ((await apiFetch(`/mapeo/${id}/restaurar`, { method: 'POST' })).ok) actualizarEstado(id, 'pendiente'); } catch {}
     finally { setRestaurandoId(null); }
+  }
+
+  async function handleAceptarDirecto(id) {
+    setAceptandoId(id);
+    try {
+      const res = await apiFetch(`/mapeo/${id}/aceptar`, { method: 'POST' });
+      if (res.ok) { const data = await res.json(); actualizarEstado(id, data.estado); }
+    } catch {}
+    finally { setAceptandoId(null); }
   }
 
   async function bulkAccion(accion) {
@@ -841,6 +878,12 @@ export default function Mapeo() {
                           {restaurandoId === item.id ? '…' : 'Restaurar'}
                         </button>
                       )}
+                      {item.estado === 'ignorado' && (
+                        <button onClick={() => handleAceptarDirecto(item.id)} disabled={aceptandoId === item.id}
+                          style={{ ...btn.green, padding: '5px 12px', fontSize: 12, opacity: aceptandoId === item.id ? 0.5 : 1, cursor: aceptandoId === item.id ? 'not-allowed' : 'pointer' }}>
+                          {aceptandoId === item.id ? '…' : 'Aceptar'}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -848,8 +891,9 @@ export default function Mapeo() {
                 {expandido === item.id && (
                   <FilaExpandida key={`exp-${item.id}`} item={item}
                     onConfirmado={id => actualizarEstado(id, 'confirmado')}
-                    onIgnorado={id => actualizarEstado(id, 'ignorado')}
+                    onIgnorado={(id, autoResuelto) => { actualizarEstado(id, 'ignorado'); if (autoResuelto) actualizarEstado(autoResuelto.id, autoResuelto.estado); }}
                     onRestaurado={id => actualizarEstado(id, 'pendiente')}
+                    onAceptado={(id, estado) => actualizarEstado(id, estado)}
                     onEditado={handleEditado}
                     onCancelar={() => setExpandido(null)}
                   />
